@@ -130,7 +130,7 @@ const CreateEbook = () => {
     if (!validationResult.success) {
       const firstError = validationResult.error.errors[0];
       toast({
-        title: "Erro de validaÃ§Ã£o",
+        title: "Erro de validação",
         description: firstError.message,
         variant: "destructive"
       });
@@ -144,7 +144,7 @@ const CreateEbook = () => {
         if (!chapterValidation.success) {
           const firstError = chapterValidation.error.errors[0];
           toast({
-            title: "Erro de validaÃ§Ã£o no capÃ­tulo",
+            title: "Erro de validação no capítulo",
             description: `${chapter.title}: ${firstError.message}`,
             variant: "destructive"
           });
@@ -234,8 +234,8 @@ const CreateEbook = () => {
             await supabase.from("notifications").insert({
               user_id: author.userId,
               type: 'collaboration_request',
-              title: 'Convite de ColaboraÃ§Ã£o',
-              message: `VocÃª foi adicionado como autor do livro "${title}". Aceite ou rejeite o convite.`,
+              title: 'Convite de Colaboração',
+              message: `Você foi adicionado como autor do livro "${title}". Aceite ou rejeite o convite.`,
               data: { 
                 ebook_id: ebook.id, 
                 book_author_id: bookAuthor.id,
@@ -249,7 +249,7 @@ const CreateEbook = () => {
       toast({
         title: "Ebook criado!",
         description: authors.some(a => a.userId) 
-          ? "Convites de colaboraÃ§Ã£o enviados. Redirecionando para o editor..."
+          ? "Convites de colaboração enviados. Redirecionando para o editor..."
           : "Redirecionando para o editor..."
       });
 
@@ -316,16 +316,16 @@ const CreateEbook = () => {
     // Apply basic length validation on the fly
     if (field === 'title' && value.length > 200) {
       toast({
-        title: "TÃ­tulo muito longo",
-        description: "O tÃ­tulo do capÃ­tulo deve ter no mÃ¡ximo 200 caracteres",
+        title: "Título muito longo",
+        description: "O título do capítulo deve ter no máximo 200 caracteres",
         variant: "destructive"
       });
       return;
     }
     if (field === 'content' && value.length > 100000) {
       toast({
-        title: "ConteÃºdo muito longo",
-        description: "O conteÃºdo do capÃ­tulo deve ter no mÃ¡ximo 100.000 caracteres",
+        title: "Conteúdo muito longo",
+        description: "O conteúdo do capítulo deve ter no máximo 100.000 caracteres",
         variant: "destructive"
       });
       return;
@@ -371,14 +371,14 @@ const CreateEbook = () => {
   const originOptions = [{
     id: "blank" as const,
     name: "Criar do Zero",
-    description: "Comece com um eBook em branco e crie seu conteÃºdo",
+    description: "Comece com um eBook em branco e crie seu conteúdo",
     icon: BookOpen,
     gradient: "from-[#70CBD4] to-[#69A1EB]",
     recommended: true
   }, {
     id: "import" as const,
     name: "Importar EPUB/PDF",
-    description: "FaÃ§a upload de um arquivo existente para converter",
+    description: "Faça upload de um arquivo existente para converter",
     icon: Upload,
     gradient: "from-[#70CBD4] to-[#69A1EB]",
     recommended: false
@@ -446,15 +446,15 @@ const CreateEbook = () => {
         {step === "mapping" && <div className="max-w-4xl mx-auto">
             <Card className="p-8 space-y-6">
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold">Mapeamento de CapÃ­tulos</h2>
+                <h2 className="text-3xl font-bold">Mapeamento de Capítulos</h2>
                 <p className="text-muted-foreground">
-                  Revise e edite os capÃ­tulos detectados
+                  Revise e edite os capítulos detectados
                 </p>
               </div>
 
               <div className="flex items-center justify-between mb-4 p-4 bg-muted rounded-lg">
                 <p className="text-sm font-medium">
-                  {parsedChapters.length} capÃ­tulo{parsedChapters.length !== 1 ? 's' : ''} detectado{parsedChapters.length !== 1 ? 's' : ''}
+                  {parsedChapters.length} capítulo{parsedChapters.length !== 1 ? 's' : ''} detectado{parsedChapters.length !== 1 ? 's' : ''}
                 </p>
               </div>
               
@@ -464,9 +464,9 @@ const CreateEbook = () => {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
                           <Label htmlFor={`chapter-title-${chapter.id}`}>
-                            CapÃ­tulo {index + 1}
+                            Capítulo {index + 1}
                           </Label>
-                          <Input id={`chapter-title-${chapter.id}`} value={chapter.title} onChange={e => handleChapterUpdate(chapter.id, 'title', e.target.value)} placeholder="TÃ­tulo do capÃ­tulo" />
+                          <Input id={`chapter-title-${chapter.id}`} value={chapter.title} onChange={e => handleChapterUpdate(chapter.id, 'title', e.target.value)} placeholder="Título do capítulo" />
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveChapter(chapter.id)}>
                           <X className="h-4 w-4" />
@@ -474,7 +474,7 @@ const CreateEbook = () => {
                       </div>
                       <div>
                         <Label htmlFor={`chapter-content-${chapter.id}`}>
-                          ConteÃºdo (preview)
+                          Conteúdo (preview)
                         </Label>
                         <Textarea id={`chapter-content-${chapter.id}`} value={chapter.content.substring(0, 200) + (chapter.content.length > 200 ? '...' : '')} readOnly className="h-20 resize-none bg-muted" />
                       </div>
@@ -498,7 +498,7 @@ const CreateEbook = () => {
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold">Como deseja criar seu eBook?</h2>
               <p className="text-muted-foreground">
-                Escolha entre comeÃ§ar do zero ou importar um arquivo existente
+                Escolha entre começar do zero ou importar um arquivo existente
               </p>
             </div>
 
@@ -528,18 +528,18 @@ const CreateEbook = () => {
         {step === "metadata" && <div className="max-w-2xl mx-auto">
             <Card className="p-8 space-y-6">
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold">InformaÃ§Ãµes do eBook</h2>
+                <h2 className="text-3xl font-bold">Informações do eBook</h2>
                 <p className="text-muted-foreground">
-                  Preencha os dados bÃ¡sicos do seu eBook
+                  Preencha os dados básicos do seu eBook
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">
-                    TÃ­tulo <span className="text-destructive">*</span>
+                    Título <span className="text-destructive">*</span>
                   </Label>
-                  <Input id="title" placeholder="Digite o tÃ­tulo do seu eBook" value={title} onChange={e => setTitle(e.target.value)} required />
+                  <Input id="title" placeholder="Digite o título do seu eBook" value={title} onChange={e => setTitle(e.target.value)} required />
                 </div>
 
                 <div className="space-y-2">
@@ -551,15 +551,15 @@ const CreateEbook = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">DescriÃ§Ã£o</Label>
+                  <Label htmlFor="description">Descrição</Label>
                   <Textarea id="description" placeholder="Descreva seu eBook..." value={description} onChange={e => setDescription(e.target.value)} rows={4} />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="genre">GÃªnero</Label>
+                  <Label htmlFor="genre">Gênero</Label>
                   <Select value={selectedGenre} onValueChange={setSelectedGenre}>
                     <SelectTrigger id="genre">
-                      <SelectValue placeholder="Selecione um gÃªnero" />
+                      <SelectValue placeholder="Selecione um gênero" />
                     </SelectTrigger>
                     <SelectContent>
                       {genres.map(genre => <SelectItem key={genre.id} value={genre.name}>
@@ -570,7 +570,7 @@ const CreateEbook = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="price-type">Tipo de PreÃ§o</Label>
+                  <Label htmlFor="price-type">Tipo de Preço</Label>
                   <Select value={isFree ? "free" : "paid"} onValueChange={value => {
                 setIsFree(value === "free");
                 if (value === "free") setPrice("0");
@@ -579,14 +579,14 @@ const CreateEbook = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="free">GrÃ¡tis</SelectItem>
+                      <SelectItem value="free">Grátis</SelectItem>
                       <SelectItem value="paid">Pago</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {!isFree && <div className="space-y-2">
-                    <Label htmlFor="price">PreÃ§o (MZN)</Label>
+                    <Label htmlFor="price">Preço (MZN)</Label>
                     <Input id="price" type="number" min="0" step="0.01" placeholder="0.00" value={price} onChange={e => setPrice(e.target.value)} />
                   </div>}
 
