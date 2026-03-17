@@ -92,7 +92,7 @@ const Discover = () => {
     setLoading(true);
     const {
       data
-    } = await supabase.from("ebooks").select("*").or(`is_public.eq.true,user_id.eq.${currentUserId}`).order("created_at", {
+    } = await supabase.from("ebooks").select("*").eq("is_public", true).order("created_at", {
       ascending: false
     });
     if (data) {

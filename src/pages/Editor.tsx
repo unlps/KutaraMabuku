@@ -1,14 +1,13 @@
-import { useState, useEffect, useCallback, Suspense } from "react";
+﻿import { useState, useEffect, useCallback, Suspense } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRobustEditor } from "@/hooks/useRobustEditor";
 import { useEditorExport } from "@/hooks/useEditorExport";
-import { RobustEditor, EditorHeader, EditorPreview, CoverTemplateSelector, EbookMetadataForm } from "@/components/Editor";
+import { RobustEditor, EditorHeader, EditorPreview, EbookMetadataForm } from "@/components/Editor";
 import CoverPreview from "@/components/CoverPreview";
-import { CoverTemplate } from "@/components/templates/covers";
-import { Loader2, Palette } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { coverTemplates, CoverTemplate } from "@/components/templates/covers";
+import { Loader2, Palette, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Ebook {
@@ -22,7 +21,7 @@ interface Ebook {
   price: number | null;
 }
 
-type EditorStep = 'metadata' | 'editor';
+type EditorStep = 'metadata' | 'template' | 'editor';
 
 export default function Editor() {
   const [searchParams] = useSearchParams();
@@ -41,7 +40,7 @@ export default function Editor() {
   const editorState = useRobustEditor(ebookId || '');
 
   const { handleExportPDF, handleExportDOCX } = useEditorExport({
-    title: ebook?.title || 'Sem título',
+    title: ebook?.title || 'Sem tÃ­tulo',
     author: ebook?.author,
     genre: ebook?.genre,
     coverImage,
@@ -136,11 +135,11 @@ export default function Editor() {
       // Update local state
       setEbook({ ...updatedEbook, cover_image: newCoverUrl });
       setCoverImage(newCoverUrl);
-      setStep('editor');
+      setStep('template');
 
       toast({
-        title: "Informações atualizadas!",
-        description: "Agora você pode editar o conteúdo do ebook.",
+        title: "InformaÃ§Ãµes atualizadas!",
+        description: "Agora escolha o template da capa.",
       });
     } catch (error: unknown) {
       toast({
@@ -155,6 +154,16 @@ export default function Editor() {
 
   const handleSave = async () => {
     if (!ebook) return;
+
+    if (!coverImage && coverTemplate === "none") {
+      toast({
+        title: "Template obrigatorio",
+        description: "Sem imagem de capa, selecione um template diferente de Nenhum.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -172,6 +181,46 @@ export default function Editor() {
       toast({
         title: "Erro ao salvar",
         description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTemplateContinue = async () => {
+    if (!ebook) return;
+
+    if (!coverImage && coverTemplate === "none") {
+      toast({
+        title: "Template obrigatorio",
+        description: "Sem imagem de capa, selecione um template diferente de Nenhum.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("ebooks")
+        .update({
+          template_id: coverTemplate,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", ebook.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Template salvo",
+        description: "Template aplicado com sucesso.",
+      });
+      setStep("editor");
+    } catch (error: unknown) {
+      toast({
+        title: "Erro ao salvar template",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       });
     } finally {
@@ -203,6 +252,79 @@ export default function Editor() {
     );
   }
 
+  if (step === "template") {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={() => setStep("metadata")}>
+              Voltar
+            </Button>
+            <h1 className="text-lg font-semibold">Escolher Template de Capa</h1>
+            <div className="w-16" />
+          </div>
+        </header>
+
+        <main className="container mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto space-y-6">
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <Sparkles className="h-6 w-6 text-primary" />
+                <h2 className="text-3xl font-bold">Templates de Capa</h2>
+              </div>
+              <p className="text-muted-foreground">8 templates (incluindo Nenhum) com prÃ©via em tempo real.</p>
+            </div>
+
+            <div className="border rounded-xl bg-card p-4 md:p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
+                <div className="space-y-3 max-h-[560px] overflow-auto pr-1">
+                  {coverTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => setCoverTemplate(template.id)}
+                      className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                        coverTemplate === template.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                      }`}
+                      title={template.description}
+                    >
+                      <p className="text-sm font-medium">{template.name}</p>
+                      <p className="text-xs text-muted-foreground">{template.description}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-col items-center justify-center">
+                  <h4 className="text-sm font-medium text-foreground mb-3">PrÃ©via</h4>
+                  <div className="border rounded-lg overflow-hidden shadow-md" style={{ width: "300px", height: "388px" }}>
+                    {coverTemplate === "none" && coverImage ? (
+                      <img src={coverImage} alt={ebook.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div style={{ transform: "scale(0.35)", transformOrigin: "top left", width: "8.5in", height: "11in" }}>
+                        <CoverPreview template={coverTemplate} title={ebook.title} author={ebook.author} coverImage={coverImage} genre={ebook.genre} />
+                      </div>
+                    )}
+                  </div>
+                  {!coverImage && coverTemplate === "none" && (
+                    <p className="text-xs text-destructive mt-3 text-center">
+                      Sem imagem de capa, selecione um template diferente de Nenhum.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              <Button onClick={handleTemplateContinue} disabled={saving || (!coverImage && coverTemplate === "none")} className="bg-gradient-primary hover:opacity-90">
+                {saving ? "Salvando..." : "Continuar"}
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <div 
@@ -229,46 +351,14 @@ export default function Editor() {
           onClick={() => setStep('metadata')}
           className="h-8 text-muted-foreground hover:text-foreground"
         >
-          Editar Informações
+          Editar InformaÃ§Ãµes
         </Button>
-        
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8">
-              <Palette className="h-3.5 w-3.5 mr-1.5" />
-              Template: {coverTemplate.charAt(0).toUpperCase() + coverTemplate.slice(1)}
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-[400px] sm:w-[540px]">
-            <SheetHeader>
-              <SheetTitle>Escolher Template de Capa</SheetTitle>
-            </SheetHeader>
-            <div className="mt-6">
-              <CoverTemplateSelector
-                selectedTemplate={coverTemplate}
-                onSelectTemplate={setCoverTemplate}
-                title={ebook.title}
-                author={ebook.author}
-                coverImage={coverImage}
-                genre={ebook.genre}
-              />
-              <div className="mt-6">
-                <h4 className="text-sm font-medium text-foreground mb-3">Prévia</h4>
-                <div className="border rounded-lg overflow-hidden shadow-md mx-auto" style={{ width: '300px', height: '388px' }}>
-                  {coverTemplate === 'none' && coverImage ? (
-                    <img src={coverImage} alt={ebook.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div style={{ transform: 'scale(0.35)', transformOrigin: 'top left', width: '8.5in', height: '11in' }}>
-                      <CoverPreview template={coverTemplate} title={ebook.title} author={ebook.author} coverImage={coverImage} genre={ebook.genre} />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
+        <Button variant="outline" size="sm" className="h-8" onClick={() => setStep("template")}>
+          <Palette className="h-3.5 w-3.5 mr-1.5" />
+          Template: {coverTemplate.charAt(0).toUpperCase() + coverTemplate.slice(1)}
+        </Button>
         <span className="text-xs text-muted-foreground">
-          {editorState.chapters.length} capítulo{editorState.chapters.length !== 1 ? 's' : ''}
+          {editorState.chapters.length} capÃ­tulo{editorState.chapters.length !== 1 ? 's' : ''}
         </span>
       </div>
 
@@ -286,3 +376,4 @@ export default function Editor() {
     </div>
   );
 }
+

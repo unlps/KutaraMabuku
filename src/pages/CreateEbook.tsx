@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,11 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BookOpen, Upload, Sparkles, Type, Image, Minus, FileText, ArrowRight, Check, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Upload, Sparkles, ArrowRight, X } from "lucide-react";
 import logo from "@/assets/logo-new.png";
-import { EBOOK_TEMPLATES } from "@/components/templates/ebooks";
 import { ebookSchema, chapterSchema } from "@/lib/validations";
 import AuthorInput from "@/components/AuthorInput";
+import { coverTemplates, CoverTemplate } from "@/components/templates/covers";
+import CoverPreview from "@/components/CoverPreview";
 
 interface Author {
   id: string;
@@ -34,11 +34,12 @@ interface ParsedChapter {
 const CreateEbook = () => {
   const [step, setStep] = useState<WizardStep>("origin");
   const [origin, setOrigin] = useState<OriginType | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<CoverTemplate>("none");
   const [title, setTitle] = useState("");
   const [authors, setAuthors] = useState<Author[]>([]);
   const [description, setDescription] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [parsedChapters, setParsedChapters] = useState<ParsedChapter[]>([]);
@@ -55,14 +56,21 @@ const CreateEbook = () => {
   const {
     toast
   } = useToast();
-  const {
-    theme
-  } = useTheme();
   useEffect(() => {
     checkUser();
     loadUserProfile();
     fetchGenres();
   }, []);
+  useEffect(() => {
+    if (!coverImage) {
+      setCoverPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(coverImage);
+    setCoverPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [coverImage]);
   const fetchGenres = async () => {
     const {
       data
@@ -103,10 +111,10 @@ const CreateEbook = () => {
     }
   };
   const handleCreateEbook = async () => {
-    if (!selectedTemplate) {
+    if (!coverImage && selectedTemplate === "none") {
       toast({
-        title: "Informações faltando",
-        description: "Por favor, escolha um template",
+        title: "Template obrigatorio",
+        description: "Sem imagem de capa, selecione um template diferente de Nenhum.",
         variant: "destructive"
       });
       return;
@@ -122,7 +130,7 @@ const CreateEbook = () => {
     if (!validationResult.success) {
       const firstError = validationResult.error.errors[0];
       toast({
-        title: "Erro de validação",
+        title: "Erro de validaÃ§Ã£o",
         description: firstError.message,
         variant: "destructive"
       });
@@ -136,7 +144,7 @@ const CreateEbook = () => {
         if (!chapterValidation.success) {
           const firstError = chapterValidation.error.errors[0];
           toast({
-            title: "Erro de validação no capítulo",
+            title: "Erro de validaÃ§Ã£o no capÃ­tulo",
             description: `${chapter.title}: ${firstError.message}`,
             variant: "destructive"
           });
@@ -226,8 +234,8 @@ const CreateEbook = () => {
             await supabase.from("notifications").insert({
               user_id: author.userId,
               type: 'collaboration_request',
-              title: 'Convite de Colaboração',
-              message: `Você foi adicionado como autor do livro "${title}". Aceite ou rejeite o convite.`,
+              title: 'Convite de ColaboraÃ§Ã£o',
+              message: `VocÃª foi adicionado como autor do livro "${title}". Aceite ou rejeite o convite.`,
               data: { 
                 ebook_id: ebook.id, 
                 book_author_id: bookAuthor.id,
@@ -241,7 +249,7 @@ const CreateEbook = () => {
       toast({
         title: "Ebook criado!",
         description: authors.some(a => a.userId) 
-          ? "Convites de colaboração enviados. Redirecionando para o editor..."
+          ? "Convites de colaboraÃ§Ã£o enviados. Redirecionando para o editor..."
           : "Redirecionando para o editor..."
       });
 
@@ -308,16 +316,16 @@ const CreateEbook = () => {
     // Apply basic length validation on the fly
     if (field === 'title' && value.length > 200) {
       toast({
-        title: "Título muito longo",
-        description: "O título do capítulo deve ter no máximo 200 caracteres",
+        title: "TÃ­tulo muito longo",
+        description: "O tÃ­tulo do capÃ­tulo deve ter no mÃ¡ximo 200 caracteres",
         variant: "destructive"
       });
       return;
     }
     if (field === 'content' && value.length > 100000) {
       toast({
-        title: "Conteúdo muito longo",
-        description: "O conteúdo do capítulo deve ter no máximo 100.000 caracteres",
+        title: "ConteÃºdo muito longo",
+        description: "O conteÃºdo do capÃ­tulo deve ter no mÃ¡ximo 100.000 caracteres",
         variant: "destructive"
       });
       return;
@@ -341,7 +349,7 @@ const CreateEbook = () => {
       setStep("metadata");
     } else if (step === "metadata" && title) {
       setStep("template");
-    } else if (step === "template" && selectedTemplate) {
+    } else if (step === "template") {
       handleCreateEbook();
     }
   };
@@ -363,14 +371,14 @@ const CreateEbook = () => {
   const originOptions = [{
     id: "blank" as const,
     name: "Criar do Zero",
-    description: "Comece com um eBook em branco e crie seu conteúdo",
+    description: "Comece com um eBook em branco e crie seu conteÃºdo",
     icon: BookOpen,
     gradient: "from-[#70CBD4] to-[#69A1EB]",
     recommended: true
   }, {
     id: "import" as const,
     name: "Importar EPUB/PDF",
-    description: "Faça upload de um arquivo existente para converter",
+    description: "FaÃ§a upload de um arquivo existente para converter",
     icon: Upload,
     gradient: "from-[#70CBD4] to-[#69A1EB]",
     recommended: false
@@ -401,7 +409,7 @@ const CreateEbook = () => {
               <div className="text-center space-y-2">
                 <h2 className="text-3xl font-bold">Upload do Arquivo</h2>
                 <p className="text-muted-foreground">
-                  Faça upload do seu EPUB ou PDF
+                  FaÃ§a upload do seu EPUB ou PDF
                 </p>
               </div>
 
@@ -438,15 +446,15 @@ const CreateEbook = () => {
         {step === "mapping" && <div className="max-w-4xl mx-auto">
             <Card className="p-8 space-y-6">
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold">Mapeamento de Capítulos</h2>
+                <h2 className="text-3xl font-bold">Mapeamento de CapÃ­tulos</h2>
                 <p className="text-muted-foreground">
-                  Revise e edite os capítulos detectados
+                  Revise e edite os capÃ­tulos detectados
                 </p>
               </div>
 
               <div className="flex items-center justify-between mb-4 p-4 bg-muted rounded-lg">
                 <p className="text-sm font-medium">
-                  {parsedChapters.length} capítulo{parsedChapters.length !== 1 ? 's' : ''} detectado{parsedChapters.length !== 1 ? 's' : ''}
+                  {parsedChapters.length} capÃ­tulo{parsedChapters.length !== 1 ? 's' : ''} detectado{parsedChapters.length !== 1 ? 's' : ''}
                 </p>
               </div>
               
@@ -456,9 +464,9 @@ const CreateEbook = () => {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
                           <Label htmlFor={`chapter-title-${chapter.id}`}>
-                            Capítulo {index + 1}
+                            CapÃ­tulo {index + 1}
                           </Label>
-                          <Input id={`chapter-title-${chapter.id}`} value={chapter.title} onChange={e => handleChapterUpdate(chapter.id, 'title', e.target.value)} placeholder="Título do capítulo" />
+                          <Input id={`chapter-title-${chapter.id}`} value={chapter.title} onChange={e => handleChapterUpdate(chapter.id, 'title', e.target.value)} placeholder="TÃ­tulo do capÃ­tulo" />
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveChapter(chapter.id)}>
                           <X className="h-4 w-4" />
@@ -466,7 +474,7 @@ const CreateEbook = () => {
                       </div>
                       <div>
                         <Label htmlFor={`chapter-content-${chapter.id}`}>
-                          Conteúdo (preview)
+                          ConteÃºdo (preview)
                         </Label>
                         <Textarea id={`chapter-content-${chapter.id}`} value={chapter.content.substring(0, 200) + (chapter.content.length > 200 ? '...' : '')} readOnly className="h-20 resize-none bg-muted" />
                       </div>
@@ -490,7 +498,7 @@ const CreateEbook = () => {
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold">Como deseja criar seu eBook?</h2>
               <p className="text-muted-foreground">
-                Escolha entre começar do zero ou importar um arquivo existente
+                Escolha entre comeÃ§ar do zero ou importar um arquivo existente
               </p>
             </div>
 
@@ -520,18 +528,18 @@ const CreateEbook = () => {
         {step === "metadata" && <div className="max-w-2xl mx-auto">
             <Card className="p-8 space-y-6">
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold">Informações do eBook</h2>
+                <h2 className="text-3xl font-bold">InformaÃ§Ãµes do eBook</h2>
                 <p className="text-muted-foreground">
-                  Preencha os dados básicos do seu eBook
+                  Preencha os dados bÃ¡sicos do seu eBook
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">
-                    Título <span className="text-destructive">*</span>
+                    TÃ­tulo <span className="text-destructive">*</span>
                   </Label>
-                  <Input id="title" placeholder="Digite o título do seu eBook" value={title} onChange={e => setTitle(e.target.value)} required />
+                  <Input id="title" placeholder="Digite o tÃ­tulo do seu eBook" value={title} onChange={e => setTitle(e.target.value)} required />
                 </div>
 
                 <div className="space-y-2">
@@ -543,15 +551,15 @@ const CreateEbook = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
+                  <Label htmlFor="description">DescriÃ§Ã£o</Label>
                   <Textarea id="description" placeholder="Descreva seu eBook..." value={description} onChange={e => setDescription(e.target.value)} rows={4} />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="genre">Gênero</Label>
+                  <Label htmlFor="genre">GÃªnero</Label>
                   <Select value={selectedGenre} onValueChange={setSelectedGenre}>
                     <SelectTrigger id="genre">
-                      <SelectValue placeholder="Selecione um gênero" />
+                      <SelectValue placeholder="Selecione um gÃªnero" />
                     </SelectTrigger>
                     <SelectContent>
                       {genres.map(genre => <SelectItem key={genre.id} value={genre.name}>
@@ -562,7 +570,7 @@ const CreateEbook = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="price-type">Tipo de Preço</Label>
+                  <Label htmlFor="price-type">Tipo de PreÃ§o</Label>
                   <Select value={isFree ? "free" : "paid"} onValueChange={value => {
                 setIsFree(value === "free");
                 if (value === "free") setPrice("0");
@@ -571,14 +579,14 @@ const CreateEbook = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="free">Grátis</SelectItem>
+                      <SelectItem value="free">GrÃ¡tis</SelectItem>
                       <SelectItem value="paid">Pago</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {!isFree && <div className="space-y-2">
-                    <Label htmlFor="price">Preço (MZN)</Label>
+                    <Label htmlFor="price">PreÃ§o (MZN)</Label>
                     <Input id="price" type="number" min="0" step="0.01" placeholder="0.00" value={price} onChange={e => setPrice(e.target.value)} />
                   </div>}
 
@@ -607,66 +615,86 @@ const CreateEbook = () => {
             <div className="text-center space-y-2">
               <div className="flex items-center justify-center gap-2">
                 <Sparkles className="h-6 w-6 text-primary" />
-                <h2 className="text-3xl font-bold">Escolha um Template</h2>
+                <h2 className="text-3xl font-bold">Escolher Template de Capa</h2>
               </div>
               <p className="text-muted-foreground">
-                Selecione o layout visual para o seu eBook
+                Escolha um dos 8 templates. Padrão: Nenhum.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {EBOOK_TEMPLATES.map(template => {
-            const templateIcon = template.id === "classic" ? Type : template.id === "visual" ? Image : template.id === "minimal" ? Minus : BookOpen;
-            const TemplateIcon = templateIcon;
-            return <Card key={template.id} className={`p-6 cursor-pointer hover:shadow-card transition-all border-2 ${selectedTemplate === template.id ? "border-primary" : ""}`} onClick={() => setSelectedTemplate(template.id)}>
-                    {true && <div className="aspect-[3/4] bg-gradient-to-br from-muted to-muted/50 rounded-lg mb-4 flex items-center justify-center border-2 border-border relative overflow-hidden">
-                        {template.id === "classic" && <div className="absolute inset-0 p-4 flex flex-col gap-2">
-                            <div className="h-3 bg-foreground/80 w-3/4 rounded mx-auto"></div>
-                            <div className="h-1 bg-foreground/20 w-full rounded"></div>
-                            <div className="h-1 bg-foreground/20 w-full rounded"></div>
-                            <div className="h-1 bg-foreground/20 w-4/5 rounded"></div>
-                            <div className="flex-1 flex items-center justify-center">
-                              <div className="w-16 h-16 bg-primary/20 rounded"></div>
+            <Card className="p-4 md:p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
+                <div className="space-y-3 max-h-[540px] overflow-auto pr-1">
+                  {coverTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => setSelectedTemplate(template.id)}
+                      className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                        selectedTemplate === template.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                      }`}
+                      title={template.description}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-20 rounded-md overflow-hidden border bg-muted flex-shrink-0 relative">
+                          {template.id === "none" && coverImage ? (
+                            <img src={coverPreviewUrl} alt="Capa selecionada" className="w-full h-full object-cover" />
+                          ) : (
+                            <div
+                              className="absolute inset-0 origin-top-left scale-[0.08]"
+                              style={{ width: "8.5in", height: "11in" }}
+                            >
+                              <CoverPreview
+                                template={template.id}
+                                title={title || "Titulo"}
+                                author={authors.map((a) => a.name).join(", ")}
+                                coverImage={coverImage ? coverPreviewUrl : null}
+                                genre={selectedGenre || null}
+                              />
                             </div>
-                            <div className="h-1 bg-foreground/20 w-full rounded"></div>
-                            <div className="h-1 bg-foreground/20 w-full rounded"></div>
-                          </div>}
-                        {template.id === "visual" && <div className="absolute inset-0 flex flex-col">
-                            <div className="h-1/3 bg-primary/30"></div>
-                            <div className="flex-1 p-4 space-y-2">
-                              <div className="h-1 bg-foreground/20 w-full rounded"></div>
-                              <div className="h-1 bg-foreground/20 w-full rounded"></div>
-                              <div className="grid grid-cols-2 gap-2 mt-2">
-                                <div className="aspect-square bg-primary/20 rounded"></div>
-                                <div className="aspect-square bg-primary/20 rounded"></div>
-                              </div>
-                            </div>
-                          </div>}
-                        {template.id === "minimal" && <div className="absolute inset-0 p-4 flex gap-2">
-                            <div className="flex-1 space-y-2">
-                              <div className="h-2 bg-foreground/80 w-2/3 rounded"></div>
-                              <div className="h-1 bg-foreground/20 w-full rounded"></div>
-                              <div className="h-1 bg-foreground/20 w-full rounded"></div>
-                              <div className="h-1 bg-foreground/20 w-4/5 rounded"></div>
-                              <div className="h-1 bg-foreground/20 w-full rounded"></div>
-                            </div>
-                            <div className="w-1/3 bg-primary/20 rounded"></div>
-                          </div>}
-                      </div>}
-                    <h3 className="font-semibold mb-2">{template.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {template.description}
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{template.name}</p>
+                          <p className="text-xs text-muted-foreground">{template.description}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-col items-center justify-center">
+                  <h4 className="text-sm font-medium text-foreground mb-3">Prévia</h4>
+                  <div className="border rounded-lg overflow-hidden shadow-md" style={{ width: "300px", height: "388px" }}>
+                    {selectedTemplate === "none" && coverImage ? (
+                      <img src={coverPreviewUrl} alt={title || "Capa"} className="w-full h-full object-cover" />
+                    ) : (
+                      <div style={{ transform: "scale(0.35)", transformOrigin: "top left", width: "8.5in", height: "11in" }}>
+                        <CoverPreview
+                          template={selectedTemplate}
+                          title={title || "Titulo"}
+                          author={authors.map((a) => a.name).join(", ")}
+                          coverImage={coverImage ? coverPreviewUrl : null}
+                          genre={selectedGenre || null}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {!coverImage && selectedTemplate === "none" && (
+                    <p className="text-xs text-destructive mt-3 text-center">
+                      Sem imagem de capa, selecione um template diferente de Nenhum.
                     </p>
-                  </Card>;
-          })}
-            </div>
+                  )}
+                </div>
+              </div>
+            </Card>
 
             <div className="flex justify-center gap-4">
               <Button variant="outline" onClick={handleBack}>
                 Voltar
               </Button>
-              <Button onClick={handleNext} disabled={!selectedTemplate || loading} className="bg-gradient-primary hover:opacity-90">
-                {loading ? "Criando..." : "Criar eBook"}
+              <Button onClick={handleNext} disabled={loading || (!coverImage && selectedTemplate === "none")} className="bg-gradient-primary hover:opacity-90">
+                {loading ? "Criando..." : "Continuar"}
               </Button>
             </div>
           </div>}
@@ -674,3 +702,6 @@ const CreateEbook = () => {
     </div>;
 };
 export default CreateEbook;
+
+
+
