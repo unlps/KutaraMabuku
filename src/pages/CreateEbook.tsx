@@ -338,6 +338,10 @@ const CreateEbook = () => {
   const handleRemoveChapter = (chapterId: string) => {
     setParsedChapters(chapters => chapters.filter(ch => ch.id !== chapterId));
   };
+  const handleRemoveCoverImage = () => {
+    setCoverImage(null);
+    setCoverPreviewUrl(null);
+  };
   const handleNext = () => {
     if (step === "origin" && origin) {
       if (origin === "import") {
@@ -591,11 +595,39 @@ const CreateEbook = () => {
                   </div>}
 
                 <div className="space-y-2">
-                  <Label htmlFor="cover">Capa (opcional)</Label>
-                  <Input id="cover" type="file" accept="image/*" onChange={e => setCoverImage(e.target.files?.[0] || null)} className="cursor-pointer" />
-                  {coverImage && <p className="text-sm text-muted-foreground">
-                      Imagem selecionada: {coverImage.name}
-                    </p>}
+                  <Label htmlFor="cover">Capa do Ebook</Label>
+                  {coverPreviewUrl ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={coverPreviewUrl}
+                        alt="Capa"
+                        className="w-full max-w-xs h-auto rounded-lg border"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2"
+                        onClick={handleRemoveCoverImage}
+                        type="button"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
+                      <input
+                        id="cover"
+                        type="file"
+                        accept="image/*"
+                        onChange={e => setCoverImage(e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                      <label htmlFor="cover" className="cursor-pointer flex flex-col items-center gap-2">
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Clique para fazer upload da capa</p>
+                      </label>
+                    </div>
+                  )}
                 </div>
               </div>
 

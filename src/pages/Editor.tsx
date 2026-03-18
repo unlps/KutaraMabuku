@@ -270,38 +270,66 @@ export default function Editor() {
             <div className="text-center space-y-2">
               <div className="flex items-center justify-center gap-2">
                 <Sparkles className="h-6 w-6 text-primary" />
-                <h2 className="text-3xl font-bold">Templates de Capa</h2>
+                <h2 className="text-3xl font-bold">Escolher Template de Capa</h2>
               </div>
-              <p className="text-muted-foreground">8 templates (incluindo Nenhum) com prÃ©via em tempo real.</p>
+              <p className="text-muted-foreground">Escolha um dos 8 templates. Padrão: Nenhum.</p>
             </div>
 
             <div className="border rounded-xl bg-card p-4 md:p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
-                <div className="space-y-3 max-h-[560px] overflow-auto pr-1">
+              <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
+                <div className="space-y-3 max-h-[540px] overflow-auto pr-1">
                   {coverTemplates.map((template) => (
                     <button
                       key={template.id}
                       type="button"
                       onClick={() => setCoverTemplate(template.id)}
-                      className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                      className={`w-full text-left rounded-lg border p-3 transition-colors ${
                         coverTemplate === template.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
                       }`}
                       title={template.description}
                     >
-                      <p className="text-sm font-medium">{template.name}</p>
-                      <p className="text-xs text-muted-foreground">{template.description}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-20 rounded-md overflow-hidden border bg-muted flex-shrink-0 relative">
+                          {template.id === "none" && coverImage ? (
+                            <img src={coverImage} alt="Capa selecionada" className="w-full h-full object-cover" />
+                          ) : (
+                            <div
+                              className="absolute inset-0 origin-top-left scale-[0.08]"
+                              style={{ width: "8.5in", height: "11in" }}
+                            >
+                              <CoverPreview
+                                template={template.id}
+                                title={ebook.title || "Titulo"}
+                                author={ebook.author}
+                                coverImage={coverImage}
+                                genre={ebook.genre}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{template.name}</p>
+                          <p className="text-xs text-muted-foreground">{template.description}</p>
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>
 
                 <div className="flex flex-col items-center justify-center">
-                  <h4 className="text-sm font-medium text-foreground mb-3">PrÃ©via</h4>
+                  <h4 className="text-sm font-medium text-foreground mb-3">Prévia</h4>
                   <div className="border rounded-lg overflow-hidden shadow-md" style={{ width: "300px", height: "388px" }}>
                     {coverTemplate === "none" && coverImage ? (
                       <img src={coverImage} alt={ebook.title} className="w-full h-full object-cover" />
                     ) : (
                       <div style={{ transform: "scale(0.35)", transformOrigin: "top left", width: "8.5in", height: "11in" }}>
-                        <CoverPreview template={coverTemplate} title={ebook.title} author={ebook.author} coverImage={coverImage} genre={ebook.genre} />
+                        <CoverPreview
+                          template={coverTemplate}
+                          title={ebook.title}
+                          author={ebook.author}
+                          coverImage={coverImage}
+                          genre={ebook.genre}
+                        />
                       </div>
                     )}
                   </div>
