@@ -7,7 +7,7 @@ import { useEditorExport } from "@/hooks/useEditorExport";
 import { RobustEditor, EditorHeader, EditorPreview, EbookMetadataForm } from "@/components/Editor";
 import CoverPreview from "@/components/CoverPreview";
 import { coverTemplates, CoverTemplate } from "@/components/templates/covers";
-import { Loader2, Palette, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Palette, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Ebook {
@@ -255,13 +255,17 @@ export default function Editor() {
   if (step === "template") {
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <Button variant="ghost" size="sm" onClick={() => setStep("metadata")}>
-              Voltar
+        <header className="border-b bg-card px-4 py-3">
+          <div className="container mx-auto flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setStep("editor")}
+              className="h-9 w-9"
+            >
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-lg font-semibold">Escolher Template de Capa</h1>
-            <div className="w-16" />
+            <h1 className="text-sm font-medium text-foreground">Escolher Template de Capa</h1>
           </div>
         </header>
 

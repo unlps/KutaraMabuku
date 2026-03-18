@@ -175,16 +175,16 @@ const EbookMetadataForm: React.FC<EbookMetadataFormProps> = ({ ebook, onContinue
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header with back button */}
-      <div className="border-b bg-card px-4 py-3">
-        <button
+      <header className="border-b bg-card px-4 py-3">
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onBack}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          className="h-9 w-9"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span className="text-sm">Voltar</span>
-        </button>
-      </div>
+        </Button>
+      </header>
 
       <div className="max-w-4xl mx-auto p-6">
         <Card>
