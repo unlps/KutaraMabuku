@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useEditor as useTipTapEditor } from '@tiptap/react';
+import { Extension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
+import TextStyle from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
 import { Chapter } from '@/types/editor';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +16,54 @@ import { z } from 'zod';
 const chapterSchema = z.object({
   title: z.string().trim().min(1).max(200),
   content: z.string().max(500000),
+});
+
+const ExtendedTextStyle = Extension.create({
+  name: 'extendedTextStyle',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['textStyle'],
+        attributes: {
+          fontFamily: {
+            default: null,
+            parseHTML: (element) => element.style.fontFamily || null,
+            renderHTML: (attributes) => {
+              if (!attributes.fontFamily) return {};
+              return { style: `font-family: ${attributes.fontFamily}` };
+            },
+          },
+          fontSize: {
+            default: null,
+            parseHTML: (element) => element.style.fontSize || null,
+            renderHTML: (attributes) => {
+              if (!attributes.fontSize) return {};
+              return { style: `font-size: ${attributes.fontSize}` };
+            },
+          },
+          backgroundColor: {
+            default: null,
+            parseHTML: (element) => element.style.backgroundColor || null,
+            renderHTML: (attributes) => {
+              if (!attributes.backgroundColor) return {};
+              return { style: `background-color: ${attributes.backgroundColor}` };
+            },
+          },
+          verticalAlign: {
+            default: null,
+            parseHTML: (element) => element.style.verticalAlign || null,
+            renderHTML: (attributes) => {
+              if (!attributes.verticalAlign) return {};
+              const isSuper = attributes.verticalAlign === 'super';
+              return {
+                style: `vertical-align: ${attributes.verticalAlign}; font-size: ${isSuper ? '0.75em' : '0.75em'}`,
+              };
+            },
+          },
+        },
+      },
+    ];
+  },
 });
 
 export const useRobustEditor = (ebookId: string) => {
@@ -30,6 +81,9 @@ export const useRobustEditor = (ebookId: string) => {
         heading: { levels: [1, 2, 3] },
       }),
       Underline,
+      TextStyle,
+      Color,
+      ExtendedTextStyle,
       Link.configure({
         openOnClick: false,
       }),

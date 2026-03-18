@@ -28,6 +28,12 @@ interface ParsedRun {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
+  strike?: boolean;
+  color?: string;
+  fontSize?: string;
+  fontFamily?: string;
+  backgroundColor?: string;
+  verticalAlign?: 'super' | 'sub';
 }
 
 // Sanitize text to remove HTML tags and normalize whitespace
@@ -63,7 +69,20 @@ function parseHtmlContent(html: string): ParsedElement[] {
   function parseInlineContent(node: Node): ParsedRun[] {
     const runs: ParsedRun[] = [];
     
-    function processNode(n: Node, styles: { bold?: boolean; italic?: boolean; underline?: boolean } = {}) {
+    function processNode(
+      n: Node,
+      styles: {
+        bold?: boolean;
+        italic?: boolean;
+        underline?: boolean;
+        strike?: boolean;
+        color?: string;
+        fontSize?: string;
+        fontFamily?: string;
+        backgroundColor?: string;
+        verticalAlign?: 'super' | 'sub';
+      } = {}
+    ) {
       if (n.nodeType === Node.TEXT_NODE) {
         const text = n.textContent || '';
         if (text) {
@@ -80,6 +99,18 @@ function parseHtmlContent(html: string): ParsedElement[] {
         if (tagName === 'strong' || tagName === 'b') newStyles.bold = true;
         if (tagName === 'em' || tagName === 'i') newStyles.italic = true;
         if (tagName === 'u') newStyles.underline = true;
+        if (tagName === 's' || tagName === 'strike' || tagName === 'del') newStyles.strike = true;
+        if (tagName === 'sup') newStyles.verticalAlign = 'super';
+        if (tagName === 'sub') newStyles.verticalAlign = 'sub';
+
+        const style = (el as HTMLElement).style;
+        if (style?.color) newStyles.color = style.color;
+        if (style?.fontSize) newStyles.fontSize = style.fontSize;
+        if (style?.fontFamily) newStyles.fontFamily = style.fontFamily;
+        if (style?.backgroundColor) newStyles.backgroundColor = style.backgroundColor;
+        if (style?.verticalAlign === 'super' || style?.verticalAlign === 'sub') {
+          newStyles.verticalAlign = style.verticalAlign;
+        }
         
         el.childNodes.forEach(child => processNode(child, newStyles));
       }
@@ -232,6 +263,20 @@ function getDocxAlignment(align?: string): typeof AlignmentType[keyof typeof Ali
     case 'justify': return AlignmentType.JUSTIFIED;
     default: return AlignmentType.LEFT;
   }
+}
+
+function toDocxColor(color?: string): string | undefined {
+  if (!color) return undefined;
+  const m = color.match(/#([0-9a-fA-F]{6})/);
+  if (m) return m[1].toUpperCase();
+  return undefined;
+}
+
+function toDocxSizeHalfPoints(fontSize?: string, fallback = 24): number {
+  if (!fontSize) return fallback;
+  const px = parseFloat(fontSize.replace('px', '').trim());
+  if (Number.isNaN(px)) return fallback;
+  return Math.max(16, Math.round(px * 1.5));
 }
 
 async function waitForImages(element: HTMLElement, timeout = 3000): Promise<void> {
@@ -623,7 +668,18 @@ export async function exportToDOCX(options: ExportOptions): Promise<void> {
         bold: run.bold,
         italics: run.italic,
         underline: run.underline ? {} : undefined,
-        size: element.type === 'heading1' ? 48 : element.type === 'heading2' ? 36 : element.type === 'heading3' ? 28 : 24
+        strike: run.strike,
+        color: toDocxColor(run.color),
+        size:
+          element.type === 'heading1'
+            ? 48
+            : element.type === 'heading2'
+              ? 36
+              : element.type === 'heading3'
+                ? 28
+                : toDocxSizeHalfPoints(run.fontSize, 24),
+        ...(run.verticalAlign === 'super' ? { superScript: true } : {}),
+        ...(run.verticalAlign === 'sub' ? { subScript: true } : {}),
       };
       return new TextRun(runOptions);
     });
