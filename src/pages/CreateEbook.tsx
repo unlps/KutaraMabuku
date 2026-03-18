@@ -113,7 +113,7 @@ const CreateEbook = () => {
   const handleCreateEbook = async () => {
     if (!coverImage && selectedTemplate === "none") {
       toast({
-        title: "Template obrigatorio",
+        title: "Template obrigatório",
         description: "Sem imagem de capa, selecione um template diferente de Nenhum.",
         variant: "destructive"
       });
@@ -413,7 +413,7 @@ const CreateEbook = () => {
               <div className="text-center space-y-2">
                 <h2 className="text-3xl font-bold">Upload do Arquivo</h2>
                 <p className="text-muted-foreground">
-                  FaÃ§a upload do seu EPUB ou PDF
+                  Faça upload do seu EPUB ou PDF
                 </p>
               </div>
 
@@ -650,7 +650,7 @@ const CreateEbook = () => {
                 <h2 className="text-3xl font-bold">Escolher Template de Capa</h2>
               </div>
               <p className="text-muted-foreground">
-                Escolha um dos 8 templates. Padrão: Nenhum.
+                Se você fez upload de uma capa personalizada, selecione "Nenhum" para usar sua imagem sem sobreposição de template.
               </p>
             </div>
 

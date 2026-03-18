@@ -40,7 +40,7 @@ export default function Editor() {
   const editorState = useRobustEditor(ebookId || '');
 
   const { handleExportPDF, handleExportDOCX } = useEditorExport({
-    title: ebook?.title || 'Sem tÃ­tulo',
+    title: ebook?.title || 'Sem ti­tulo',
     author: ebook?.author,
     genre: ebook?.genre,
     coverImage,
@@ -138,7 +138,7 @@ export default function Editor() {
       setStep('editor');
 
       toast({
-        title: "InformaÃ§Ãµes atualizadas!",
+        title: "Informações atualizadas!",
         description: "Dados atualizados com sucesso.",
       });
     } catch (error: unknown) {
@@ -157,7 +157,7 @@ export default function Editor() {
 
     if (!coverImage && coverTemplate === "none") {
       toast({
-        title: "Template obrigatorio",
+        title: "Template obrigatório",
         description: "Sem imagem de capa, selecione um template diferente de Nenhum.",
         variant: "destructive",
       });
@@ -193,7 +193,7 @@ export default function Editor() {
 
     if (!coverImage && coverTemplate === "none") {
       toast({
-        title: "Template obrigatorio",
+        title: "Template obrigatório",
         description: "Sem imagem de capa, selecione um template diferente de Nenhum.",
         variant: "destructive",
       });
@@ -265,7 +265,7 @@ export default function Editor() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-sm font-medium text-foreground">Escolher Template de Capa</h1>
+            <h1 className="text-sm font-medium text-foreground">Template de Capa</h1>
           </div>
         </header>
 
@@ -276,7 +276,7 @@ export default function Editor() {
                 <Sparkles className="h-6 w-6 text-primary" />
                 <h2 className="text-3xl font-bold">Escolher Template de Capa</h2>
               </div>
-              <p className="text-muted-foreground">Escolha um dos 8 templates. Padrão: Nenhum.</p>
+              <p className="text-muted-foreground">Se você fez upload de uma capa personalizada, selecione "Nenhum" para usar sua imagem sem sobreposição de template.</p>
             </div>
 
             <div className="border rounded-xl bg-card p-4 md:p-6">
@@ -383,14 +383,14 @@ export default function Editor() {
           onClick={() => setStep('metadata')}
           className="h-8 text-muted-foreground hover:text-foreground"
         >
-          Editar InformaÃ§Ãµes
+          Editar Informações
         </Button>
         <Button variant="outline" size="sm" className="h-8" onClick={() => setStep("template")}>
           <Palette className="h-3.5 w-3.5 mr-1.5" />
           Template: {coverTemplate.charAt(0).toUpperCase() + coverTemplate.slice(1)}
         </Button>
         <span className="text-xs text-muted-foreground">
-          {editorState.chapters.length} capÃ­tulo{editorState.chapters.length !== 1 ? 's' : ''}
+          {editorState.chapters.length} capítulo{editorState.chapters.length !== 1 ? 's' : ''}
         </span>
       </div>
 
