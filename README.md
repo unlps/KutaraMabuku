@@ -1,73 +1,213 @@
-# Welcome to your Lovable project
+# Kutaramabuku
 
-## Project info
+Aplicacao web para criacao, edicao, publicacao e descoberta de ebooks, com editor rico de capitulos, templates de capa, autenticacao e exportacao em PDF e DOCX.
 
-**URL**: https://lovable.dev/projects/316165d0-6d08-4eac-9d10-337004e4b129
+## Visao Geral Tecnica
 
-## How can I edit this code?
+### Front-end
+- Linguagens:
+  - TypeScript
+  - CSS
+  - HTML
+- Framework principal:
+  - React 18
+- Build tool / bundler:
+  - Vite 5
+- Routing:
+  - React Router DOM
+- UI e design system:
+  - Tailwind CSS
+  - shadcn/ui
+  - Radix UI
+  - Lucide React
+  - Sonner
+  - Vaul
+- Estado e data fetching:
+  - TanStack React Query
+- Formularios e validacao:
+  - React Hook Form
+  - Zod
+  - Hookform Resolvers
+- Editor rico:
+  - TipTap
+  - CKEditor 5
+- Drag and drop / layout:
+  - @hello-pangea/dnd
+  - react-resizable-panels
+- Graficos e componentes auxiliares:
+  - Recharts
+  - Embla Carousel
+  - react-day-picker
 
-There are several ways of editing your application.
+### Backend / BaaS
+- Plataforma principal:
+  - Supabase
+- Servicos usados:
+  - Supabase Auth
+  - Supabase Database
+  - Supabase Storage
+  - Supabase Edge Functions
+- Edge Function identificada no projeto:
+  - `parse-ebook`
 
-**Use Lovable**
+### Base de Dados
+- Linguagem:
+  - SQL
+- Motor:
+  - PostgreSQL via Supabase
+- Migracoes versionadas:
+  - `supabase/migrations/*.sql`
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/316165d0-6d08-4eac-9d10-337004e4b129) and start prompting.
+### Exportacao de documentos e media
+- PDF:
+  - jsPDF
+  - html2canvas
+- DOCX:
+  - docx
+- Download de arquivos:
+  - file-saver
+- Sanitizacao HTML:
+  - DOMPurify
 
-Changes made via Lovable will be committed automatically to this repo.
+### Ferramentas de desenvolvimento
+- Node.js
+- npm
+- TypeScript compiler
+- ESLint
+- PostCSS
+- Autoprefixer
+- Vercel
 
-**Use your preferred IDE**
+## Dominios e Ambientes
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Desenvolvimento local
+- URL padrao do Vite:
+  - `http://localhost:8080`
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Deploy web
+- Deploy SPA configurado para Vercel:
+  - [vercel.json](C:\Users\unlps\MyProjects\kutaramabuku-app\vercel.json)
+- Dominio publico em uso no projeto:
+  - `https://kutaramabuku.vercel.app`
 
-Follow these steps:
+### Supabase
+- Project ref configurado:
+  - `tshpbhaxukrxzhtjbrpu`
+- Config:
+  - [supabase/config.toml](C:\Users\unlps\MyProjects\kutaramabuku-app\supabase\config.toml)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Variaveis de Ambiente
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Crie um arquivo `.env` na raiz com:
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```env
+VITE_SUPABASE_URL=
+VITE_SUPABASE_PUBLISHABLE_KEY=
+VITE_APP_URL=http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+Referencia:
+- [src/integrations/supabase/client.ts](C:\Users\unlps\MyProjects\kutaramabuku-app\src\integrations\supabase\client.ts)
+- [src/pages/Auth.tsx](C:\Users\unlps\MyProjects\kutaramabuku-app\src\pages\Auth.tsx)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Scripts
 
-**Use GitHub Codespaces**
+```bash
+npm install
+npm run dev
+npm run build
+npm run preview
+npm run lint
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Estrutura Principal
 
-## What technologies are used for this project?
+```text
+src/
+  components/
+    Editor/
+    templates/
+    ui/
+  hooks/
+  integrations/
+    supabase/
+  pages/
+  lib/
+  services/
 
-This project is built with:
+public/
+supabase/
+  functions/
+  migrations/
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Paginas Principais
 
-## How can I deploy this project?
+- `Index`
+- `Auth`
+- `Dashboard`
+- `Discover`
+- `CreateEbook`
+- `Editor`
+- `BookDetails`
+- `MyBooks`
+- `Notifications`
+- `Account`
+- `Settings`
 
-Simply open [Lovable](https://lovable.dev/projects/316165d0-6d08-4eac-9d10-337004e4b129) and click on Share -> Publish.
+## Funcionalidades Principais
 
-## Can I connect a custom domain to my Lovable project?
+- autenticacao por email/password e OAuth com Google
+- criacao e edicao de ebooks
+- editor rico de capitulos
+- selecao de templates de capa
+- upload de imagem de capa
+- armazenamento de arquivos no Supabase Storage
+- publicacao publica/privada
+- descoberta de livros publicos
+- wishlist, reviews e notificacoes
+- exportacao de ebooks em PDF e DOCX
+- parse de ebook via Edge Function
 
-Yes, you can!
+## Comandos de Base de Dados
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Para trabalhar com o Supabase local/remoto:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```bash
+supabase link --project-ref tshpbhaxukrxzhtjbrpu
+supabase db push
+```
+
+As migracoes ficam em:
+- [supabase/migrations](C:\Users\unlps\MyProjects\kutaramabuku-app\supabase\migrations)
+
+## Deploy
+
+### Build local
+
+```bash
+npm run build
+```
+
+### Vercel
+
+- O projeto esta configurado como SPA.
+- Todas as rotas sao reescritas para `index.html`.
+- Depois de atualizar variaveis de ambiente na Vercel, faca redeploy.
+
+## Observacoes
+
+- O cliente Supabase esta configurado com `persistSession: true`, `autoRefreshToken: true` e `localStorage`.
+- O favicon em uso pode ser ajustado a partir de `public/`, incluindo:
+  - `kutarafavicon.png`
+  - `favicon.ico`
+
+## Arquivos de Configuracao Relevantes
+
+- [package.json](C:\Users\unlps\MyProjects\kutaramabuku-app\package.json)
+- [vite.config.ts](C:\Users\unlps\MyProjects\kutaramabuku-app\vite.config.ts)
+- [tailwind.config.ts](C:\Users\unlps\MyProjects\kutaramabuku-app\tailwind.config.ts)
+- [postcss.config.js](C:\Users\unlps\MyProjects\kutaramabuku-app\postcss.config.js)
+- [eslint.config.js](C:\Users\unlps\MyProjects\kutaramabuku-app\eslint.config.js)
+- [vercel.json](C:\Users\unlps\MyProjects\kutaramabuku-app\vercel.json)
+- [supabase/config.toml](C:\Users\unlps\MyProjects\kutaramabuku-app\supabase\config.toml)
