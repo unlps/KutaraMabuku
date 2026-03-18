@@ -29,8 +29,9 @@ interface ReviewerLayoutProps {
 const baseNavItems = [
   { path: "/reviewer/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { path: "/reviewer/queue", label: "Revisão", icon: BookCheck },
-  { path: "/reviewer/profile", label: "Perfil", icon: UserCircle },
 ];
+
+const profileNavItem = { path: "/reviewer/profile", label: "Perfil", icon: UserCircle };
 
 const adminNavItems = [
   { path: "/reviewer/admin/invites", label: "Convites", icon: UserPlus },
@@ -155,12 +156,34 @@ const ReviewerLayout = ({ children }: ReviewerLayoutProps) => {
             );
           })}
         </nav>
+
+        {/* Profile at bottom */}
+        <div className="pb-4 pt-2 border-t border-white/10 w-full px-2">
+          <button
+            onClick={() => {
+              navigate(profileNavItem.path);
+              setSidebarOpen(false);
+            }}
+            className={`
+              w-full flex flex-col items-center gap-1 py-2.5 rounded-xl
+              transition-all duration-200 group
+              ${
+                location.pathname === profileNavItem.path
+                  ? "bg-white/15 text-white"
+                  : "text-white/60 hover:bg-white/10 hover:text-white"
+              }
+            `}
+          >
+            <UserCircle className={`h-5 w-5 ${location.pathname === profileNavItem.path ? "text-white" : ""} group-hover:scale-110 transition-transform`} />
+            <span className="text-[9px] font-medium leading-none">{profileNavItem.label}</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* ── Fixed Top Toolbar ── */}
-        <header className="sticky top-0 z-30 bg-card/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/50">
+        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/50">
           <div className="flex items-center justify-between px-4 lg:px-6 h-12">
             {/* Mobile hamburger */}
             <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={() => setSidebarOpen(true)}>

@@ -1,5 +1,12 @@
 -- Submission workflow for ebook publication
 
+-- Existing books must also go through validation before publication.
+UPDATE public.ebooks
+SET is_public = false,
+    published_at = NULL,
+    updated_at = now()
+WHERE COALESCE(is_public, false) = true;
+
 CREATE OR REPLACE FUNCTION public.submit_book_for_review(p_ebook_id uuid)
 RETURNS uuid
 LANGUAGE plpgsql
@@ -251,3 +258,5 @@ CREATE TRIGGER trigger_enforce_chapter_review_lock
 BEFORE INSERT OR UPDATE OR DELETE ON public.chapters
 FOR EACH ROW
 EXECUTE FUNCTION public.enforce_chapter_review_lock();
+
+

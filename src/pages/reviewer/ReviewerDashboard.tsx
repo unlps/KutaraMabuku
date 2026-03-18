@@ -18,6 +18,7 @@ import {
   TrendingUp,
   BarChart3,
   Shield,
+  BadgeCheck,
   Building2,
   Settings,
   LogOut,
@@ -195,19 +196,20 @@ const ReviewerDashboard = () => {
                   reviewerProfile?.full_name?.charAt(0)?.toUpperCase() || "R"
                 )}
               </div>
-              <h3 className="text-lg font-bold">{reviewerProfile?.full_name || "Reviewer"}</h3>
+              <h3 className="text-lg font-bold flex items-center justify-center gap-1.5">
+                {reviewerProfile?.full_name || "Reviewer"}
+                {reviewerProfile?.role === "admin" ? (
+                  <Shield className="h-4 w-4 text-red-500" />
+                ) : (
+                  <BadgeCheck className="h-4 w-4 text-blue-500" />
+                )}
+              </h3>
               {reviewerProfile?.publisher_name && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                   <Building2 className="h-3 w-3" />
                   {reviewerProfile.publisher_name}
                 </p>
               )}
-              <span
-                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border mt-3 ${roleBadgeColor}`}
-              >
-                <Shield className="h-3 w-3" />
-                {roleLabel}
-              </span>
 
               <div className="flex gap-2 mt-5 w-full">
                 <Button

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Shield,
+  BadgeCheck,
   Copy,
   Check,
   Calendar,
@@ -269,14 +270,15 @@ const ReviewerProfile = () => {
             </div>
 
             <div className="flex-1">
-              <h3 className="text-lg font-bold">{reviewerProfile?.full_name}</h3>
+              <h3 className="text-lg font-bold flex items-center gap-1.5">
+                {reviewerProfile?.full_name}
+                {reviewerProfile?.role === "admin" ? (
+                  <Shield className="h-4 w-4 text-red-500" />
+                ) : (
+                  <BadgeCheck className="h-4 w-4 text-blue-500" />
+                )}
+              </h3>
               <div className="flex items-center gap-2 mt-1">
-                <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${roleBadgeColor}`}
-                >
-                  <Shield className="h-3 w-3" />
-                  {roleLabel}
-                </span>
                 <span className="text-xs text-muted-foreground">
                   Desde{" "}
                   {new Date(reviewerProfile?.created_at || "").toLocaleDateString("pt-PT", {

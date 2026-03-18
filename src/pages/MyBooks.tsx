@@ -1,17 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
+import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, Eye, Download, ArrowLeft, Trash2, Edit, Globe, Lock } from "lucide-react";
+import { stripHtml } from "@/lib/utils";
+import {
+  getEbookReviewState,
+  loadLatestSubmissions,
+  type LatestSubmission,
+} from "@/lib/review-status";
+import { BookOpen, Eye, Download, ArrowLeft, Trash2, Edit, Clock, Globe, Lock } from "lucide-react";
 import logo from "@/assets/logo-new.png";
 import BottomNav from "@/components/BottomNav";
-import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import jsPDF from "jspdf";
-import { stripHtml } from "@/lib/utils";
 
 interface Ebook {
   id: string;
@@ -29,148 +32,177 @@ interface Ebook {
   price: number | null;
 }
 
+const formatDate = (value?: string | null) => {
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString("pt-PT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
 const MyBooks = () => {
   const [ebooks, setEbooks] = useState<Ebook[]>([]);
   const [selectedEbook, setSelectedEbook] = useState<Ebook | null>(null);
+  const [submissionMap, setSubmissionMap] = useState<Record<string, LatestSubmission>>({});
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+
   useEffect(() => {
     checkUser();
     fetchEbooks();
   }, []);
+
   const checkUser = async () => {
     const {
-      data: {
-        session
-      }
+      data: { session },
     } = await supabase.auth.getSession();
+
     if (!session) {
       navigate("/auth");
-      return;
     }
   };
+
   const fetchEbooks = async () => {
     const {
-      data: {
-        session
-      }
+      data: { session },
     } = await supabase.auth.getSession();
+
     if (!session) return;
-    const {
-      data: ebooksData
-    } = await supabase.from("ebooks").select("*").eq("user_id", session.user.id).order("created_at", {
-      ascending: false
-    });
-    if (ebooksData) {
-      setEbooks(ebooksData);
-    }
+
+    const { data: ebooksData } = await supabase
+      .from("ebooks")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false });
+
+    if (!ebooksData) return;
+
+    setEbooks(ebooksData);
+
+    const latestSubmissions = await loadLatestSubmissions(ebooksData.map((ebook) => ebook.id));
+    setSubmissionMap(Object.fromEntries(latestSubmissions.entries()));
   };
-  const handleTogglePublic = async (ebookId: string, currentStatus: boolean) => {
-    toast({
-      title: "Publica��o controlada por revis�o",
-      description: "O livro s� fica p�blico depois de aprovado pelos reviewers."
-    });
-  };
+
   const handleDeleteEbook = async () => {
     if (!selectedEbook) return;
-    const {
-      error
-    } = await supabase.from("ebooks").delete().eq("id", selectedEbook.id);
+
+    const selectedState = getEbookReviewState(
+      selectedEbook.is_public,
+      submissionMap[selectedEbook.id]
+    );
+
+    if (!selectedState.canEdit) {
+      toast({
+        title: "Edicao bloqueada",
+        description: selectedState.description,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { error } = await supabase.from("ebooks").delete().eq("id", selectedEbook.id);
+
     if (error) {
       toast({
         title: "Erro ao apagar",
-        description: "Não foi possível apagar o ebook",
-        variant: "destructive"
+        description: "Nao foi possivel apagar o ebook.",
+        variant: "destructive",
       });
       return;
     }
+
     toast({
       title: "Ebook apagado",
-      description: "O ebook foi apagado com sucesso"
+      description: "O ebook foi apagado com sucesso.",
     });
+
     setSelectedEbook(null);
     fetchEbooks();
   };
+
   const handleDownloadEbook = async () => {
     if (!selectedEbook) return;
+
     try {
       const htmlToText = (html: string) => {
-        const temp = document.createElement('div');
+        const temp = document.createElement("div");
         temp.innerHTML = html;
-        return temp.textContent || temp.innerText || '';
+        return temp.textContent || temp.innerText || "";
       };
-      const {
-        data: chapters
-      } = await supabase.from("chapters").select("*").eq("ebook_id", selectedEbook.id).order("chapter_order", {
-        ascending: true
-      });
+
+      const { data: chapters } = await supabase
+        .from("chapters")
+        .select("*")
+        .eq("ebook_id", selectedEbook.id)
+        .order("chapter_order", { ascending: true });
+
       const pdf = new jsPDF();
       let yPosition = 20;
+
       if (selectedEbook.cover_image) {
         try {
           const img = new Image();
           img.src = selectedEbook.cover_image;
-          await new Promise<void>(resolve => {
+          await new Promise<void>((resolve) => {
             img.onload = () => resolve();
           });
 
-          // Get page dimensions
           const pageWidth = pdf.internal.pageSize.getWidth();
           const pageHeight = pdf.internal.pageSize.getHeight();
-
-          // Calculate dimensions to cover entire page
           const imgRatio = img.width / img.height;
           const pageRatio = pageWidth / pageHeight;
-          let finalWidth, finalHeight, xOffset, yOffset;
+          let finalWidth: number;
+          let finalHeight: number;
+          let xOffset: number;
+          let yOffset: number;
+
           if (imgRatio > pageRatio) {
-            // Image is wider - fit to height and crop width
             finalHeight = pageHeight;
             finalWidth = finalHeight * imgRatio;
             xOffset = (pageWidth - finalWidth) / 2;
             yOffset = 0;
           } else {
-            // Image is taller - fit to width and crop height
             finalWidth = pageWidth;
             finalHeight = finalWidth / imgRatio;
             xOffset = 0;
             yOffset = (pageHeight - finalHeight) / 2;
           }
-          pdf.addImage(img, 'JPEG', xOffset, yOffset, finalWidth, finalHeight);
+
+          pdf.addImage(img, "JPEG", xOffset, yOffset, finalWidth, finalHeight);
         } catch (error) {
-          console.error('Erro ao adicionar capa ao PDF:', error);
+          console.error("Erro ao adicionar capa ao PDF:", error);
         }
       }
+
       pdf.addPage();
-      yPosition = 20;
       pdf.setFontSize(24);
-      const titleText = htmlToText(selectedEbook.title);
-      const titleLines = pdf.splitTextToSize(titleText, 170);
+      const titleLines = pdf.splitTextToSize(htmlToText(selectedEbook.title), 170);
       pdf.text(titleLines, 20, yPosition);
       yPosition += titleLines.length * 12 + 20;
+
       if (selectedEbook.author) {
         pdf.setFontSize(14);
         pdf.text(`Escrito por ${selectedEbook.author}`, 20, yPosition);
       }
+
       if (selectedEbook.description) {
         pdf.addPage();
         yPosition = 20;
         pdf.setFontSize(12);
-        const descText = htmlToText(selectedEbook.description);
-        const descLines = pdf.splitTextToSize(descText, 170);
+        const descLines = pdf.splitTextToSize(htmlToText(selectedEbook.description), 170);
         pdf.text(descLines, 20, yPosition);
       }
-      chapters?.forEach(chapter => {
+
+      chapters?.forEach((chapter) => {
         pdf.addPage();
         yPosition = 20;
         pdf.setFontSize(18);
-        const chapterTitle = htmlToText(chapter.title);
-        pdf.text(chapterTitle, 20, yPosition);
+        pdf.text(htmlToText(chapter.title), 20, yPosition);
         yPosition += 15;
         pdf.setFontSize(12);
-        const plainText = htmlToText(chapter.content);
-        const contentLines = pdf.splitTextToSize(plainText, 170);
+
+        const contentLines = pdf.splitTextToSize(htmlToText(chapter.content), 170);
         contentLines.forEach((line: string) => {
           if (yPosition > 280) {
             pdf.addPage();
@@ -180,67 +212,93 @@ const MyBooks = () => {
           yPosition += 7;
         });
       });
+
       pdf.save(`${htmlToText(selectedEbook.title)}.pdf`);
-      await supabase.from("ebooks").update({
-        downloads: selectedEbook.downloads + 1
-      }).eq("id", selectedEbook.id);
+
+      await supabase
+        .from("ebooks")
+        .update({ downloads: (selectedEbook.downloads || 0) + 1 })
+        .eq("id", selectedEbook.id);
+
       toast({
-        title: "Download concluído",
-        description: "O ebook foi baixado com sucesso"
+        title: "Download concluido",
+        description: "O ebook foi baixado com sucesso.",
       });
+
       fetchEbooks();
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro no download",
-        description: "Não foi possível fazer o download",
-        variant: "destructive"
+        description: "Nao foi possivel fazer o download.",
+        variant: "destructive",
       });
     }
   };
-  return <div className="min-h-screen bg-background">
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+
+  const renderStateBadge = (ebook: Ebook) => {
+    const state = getEbookReviewState(ebook.is_public, submissionMap[ebook.id]);
+    const icon =
+      state.stage === "approved" ? (
+        <Globe className="h-3 w-3" />
+      ) : state.stage === "under_review" ? (
+        <Clock className="h-3 w-3" />
+      ) : (
+        <Lock className="h-3 w-3" />
+      );
+
+    return (
+      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium ${state.badgeClassName}`}>
+        {icon}
+        {state.label}
+      </span>
+    );
+  };
+
+  const selectedSubmission = selectedEbook ? submissionMap[selectedEbook.id] : undefined;
+  const selectedState = getEbookReviewState(selectedEbook?.is_public, selectedSubmission);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-10 border-b bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <img src={logo} alt="Kutara Mabuku" className="w-10 h-10 object-cover" />
+            <img src={logo} alt="Kutara Mabuku" className="h-10 w-10 object-cover" />
             <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Meus Livros</h1>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8 pb-24">
-        {ebooks.length === 0 ? <Card className="p-12 text-center">
-            <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h4 className="text-lg font-semibold mb-2">Nenhum ebook ainda</h4>
-            <p className="text-muted-foreground mb-4">
-              Crie seu primeiro ebook para começar
-            </p>
-            <Button onClick={() => navigate("/create")}>
-              Criar Ebook
-            </Button>
-          </Card> : <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-            {ebooks.map(ebook => (
-              <Card 
+        {ebooks.length === 0 ? (
+          <Card className="p-12 text-center">
+            <BookOpen className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
+            <h4 className="mb-2 text-lg font-semibold">Nenhum ebook ainda</h4>
+            <p className="mb-4 text-muted-foreground">Crie seu primeiro ebook para comecar.</p>
+            <Button onClick={() => navigate("/create")}>Criar Ebook</Button>
+          </Card>
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+            {ebooks.map((ebook) => (
+              <Card
                 key={ebook.id}
-                className="flex-shrink-0 w-48 p-3 hover:shadow-card transition-shadow cursor-pointer border"
+                className="w-48 flex-shrink-0 cursor-pointer border p-3 transition-shadow hover:shadow-card"
                 onClick={() => setSelectedEbook(ebook)}
               >
-                <div className="aspect-[2/3] bg-gradient-primary rounded-lg mb-3 flex items-center justify-center overflow-hidden border">
+                <div className="mb-3 aspect-[2/3] overflow-hidden rounded-lg border bg-gradient-primary flex items-center justify-center">
                   {ebook.cover_image ? (
-                    <img src={ebook.cover_image} alt={ebook.title} className="w-full h-full object-cover" />
+                    <img src={ebook.cover_image} alt={ebook.title} className="h-full w-full object-cover" />
                   ) : (
                     <BookOpen className="h-12 w-12 text-white" />
                   )}
                 </div>
-                <h4 className="font-semibold mb-1 text-sm line-clamp-1">
-                  {stripHtml(ebook.title)}
-                </h4>
-                <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
-                  {stripHtml(ebook.description || "Sem descrição")}
+                <h4 className="mb-1 line-clamp-1 text-sm font-semibold">{stripHtml(ebook.title)}</h4>
+                <p className="mb-2 line-clamp-1 text-xs text-muted-foreground">
+                  {ebook.author || "Autor desconhecido"}
                 </p>
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Eye className="h-3 w-3" />
                     {ebook.views || 0}
@@ -250,125 +308,118 @@ const MyBooks = () => {
                     {ebook.downloads || 0}
                   </span>
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <span className="flex items-center gap-1 text-xs">
-                    {ebook.is_public ? (
-                      <>
-                        <Globe className="h-3 w-3 text-green-600" />
-                        <span className="text-green-600">Público</span>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-3 w-3 text-orange-600" />
-                        <span className="text-orange-600">Privado</span>
-                      </>
-                    )}
-                  </span>
-                </div>
+                <div className="pt-2 border-t">{renderStateBadge(ebook)}</div>
               </Card>
             ))}
-          </div>}
+          </div>
+        )}
       </main>
 
       <BottomNav />
 
       <Dialog open={!!selectedEbook} onOpenChange={() => setSelectedEbook(null)}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[520px]">
           <div className="space-y-4">
-            {selectedEbook?.cover_image && <div className="flex justify-center">
-                <img src={selectedEbook.cover_image} alt={selectedEbook.title} className="w-48 h-auto rounded-lg border shadow-sm" />
-              </div>}
-            
+            {selectedEbook?.cover_image && (
+              <div className="flex justify-center">
+                <img src={selectedEbook.cover_image} alt={selectedEbook.title} className="h-auto w-48 rounded-lg border shadow-sm" />
+              </div>
+            )}
+
             <div className="space-y-3">
-              <h2 className="text-lg font-semibold leading-none tracking-tight">
-                {stripHtml(selectedEbook?.title || "")}
-              </h2>
-              <p className="text-sm text-muted-foreground line-clamp-3">
-                {stripHtml(selectedEbook?.description || "Sem descrição")}
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold leading-none tracking-tight">
+                  {stripHtml(selectedEbook?.title || "")}
+                </h2>
+                {selectedEbook && renderStateBadge(selectedEbook)}
+              </div>
+              <p className="line-clamp-3 text-sm text-muted-foreground">
+                {stripHtml(selectedEbook?.description || "Sem descricao")}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Criado em</p>
-                <p className="font-medium">
-                  {selectedEbook?.created_at ? new Date(selectedEbook.created_at).toLocaleDateString('pt-PT', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric'
-                }) : '-'}
-                </p>
+                <p className="font-medium">{formatDate(selectedEbook?.created_at)}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Páginas</p>
+                <p className="text-sm text-muted-foreground">Paginas</p>
                 <p className="font-medium">{selectedEbook?.pages || 0}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Gênero</p>
-                <p className="font-medium">{selectedEbook?.genre || 'Não definido'}</p>
+                <p className="text-sm text-muted-foreground">Genero</p>
+                <p className="font-medium">{selectedEbook?.genre || "Nao definido"}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Preço</p>
+                <p className="text-sm text-muted-foreground">Preco</p>
                 <p className="font-medium">
-                  {selectedEbook?.price && selectedEbook.price > 0 ? `${selectedEbook.price} MZN` : 'Grátis'}
+                  {selectedEbook?.price && selectedEbook.price > 0 ? `${selectedEbook.price} MZN` : "Gratis"}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Visualizações</p>
-                <p className="font-medium flex items-center gap-1">
-                  <Eye className="h-4 w-4" />
-                  {selectedEbook?.views}
-                </p>
+                <p className="text-sm text-muted-foreground">Enviado para avaliacao</p>
+                <p className="font-medium">{formatDate(selectedSubmission?.submitted_at)}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Downloads</p>
-                <p className="font-medium flex items-center gap-1">
-                  <Download className="h-4 w-4" />
-                  {selectedEbook?.downloads}
-                </p>
+                <p className="text-sm text-muted-foreground">Respondido em</p>
+                <p className="font-medium">{formatDate(selectedSubmission?.reviewed_at)}</p>
               </div>
             </div>
 
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="font-medium">Visibilidade</p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedEbook?.is_public ? "Livro visível para todos no Discover" : "Livro visível apenas para você"}
-                  </p>
-                </div>
-                <Switch checked={selectedEbook?.is_public || false} onCheckedChange={() => selectedEbook && handleTogglePublic(selectedEbook.id, selectedEbook.is_public)} />
-              </div>
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-medium">Estado editorial</p>
+              <p className="mt-1 text-sm text-muted-foreground">{selectedState.description}</p>
             </div>
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="destructive" onClick={handleDeleteEbook} className="w-full sm:w-auto">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Apagar
-            </Button>
-            <div className="flex gap-2 w-full sm:w-auto">
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            {selectedState.canEdit && (
+              <Button variant="destructive" onClick={handleDeleteEbook} className="w-full sm:w-auto">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Apagar
+              </Button>
+            )}
+            <div className="flex w-full gap-2 sm:w-auto">
               <Button variant="outline" onClick={handleDownloadEbook} className="flex-1 sm:flex-none">
                 <Download className="mr-2 h-4 w-4" />
                 Download
               </Button>
-              <Button onClick={() => {
-              navigate(`/editor?id=${selectedEbook?.id}`);
-              setSelectedEbook(null);
-            }} className="flex-1 sm:flex-none">
-                <Edit className="mr-2 h-4 w-4" />
-                Editar
-              </Button>
+              {selectedState.canEdit ? (
+                <Button
+                  onClick={() => {
+                    navigate(`/editor?id=${selectedEbook?.id}`);
+                    setSelectedEbook(null);
+                  }}
+                  className="flex-1 sm:flex-none"
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Editar
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    navigate(`/book/${selectedEbook?.id}`);
+                    setSelectedEbook(null);
+                  }}
+                  className="flex-1 sm:flex-none"
+                >
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Ler
+                </Button>
+              )}
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>;
+    </div>
+  );
 };
+
 export default MyBooks;
