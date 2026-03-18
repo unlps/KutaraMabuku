@@ -173,6 +173,8 @@ All colors MUST be HSL.
   padding: 1in;
   page-break-after: always;
   position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Decorative page border */
@@ -199,8 +201,10 @@ All colors MUST be HSL.
 }
 
 .editor-paginated-content .ProseMirror {
-  min-height: 9in;
+  min-height: var(--editor-body-height, 9in);
   outline: none;
+  padding: 0;
+  width: 100%;
 }
 
 /* Image handling in editor and preview */

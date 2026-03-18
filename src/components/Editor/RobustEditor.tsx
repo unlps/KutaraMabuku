@@ -17,6 +17,7 @@ interface RobustEditorProps {
     isSaving: boolean;
     isLoading: boolean;
     selectChapter: (id: string) => void;
+    updateChapterTitle: (title: string) => void;
     updateChapterTitleById: (id: string, title: string) => void;
     addChapter: () => void;
     deleteChapter: (id: string) => void;
@@ -33,6 +34,7 @@ const RobustEditor: React.FC<RobustEditorProps> = ({ editorState }) => {
     isSaving,
     isLoading,
     selectChapter,
+    updateChapterTitle,
     updateChapterTitleById,
     addChapter,
     deleteChapter,
@@ -99,6 +101,7 @@ const RobustEditor: React.FC<RobustEditorProps> = ({ editorState }) => {
             <EditorContentComponent
               editor={editor}
               activeChapterTitle={activeChapter.title}
+              onTitleChange={updateChapterTitle}
               isSaving={isSaving}
             />
           ) : (
