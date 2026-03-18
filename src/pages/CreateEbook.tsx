@@ -595,13 +595,13 @@ const CreateEbook = () => {
                   </div>}
 
                 <div className="space-y-2">
-                  <Label htmlFor="cover">Capa do Ebook</Label>
+                  <Label htmlFor="cover" className="block">Capa do Ebook</Label>
                   {coverPreviewUrl ? (
-                    <div className="relative inline-block">
+                    <div className="relative w-full max-w-xs">
                       <img
                         src={coverPreviewUrl}
                         alt="Capa"
-                        className="w-full max-w-xs h-auto rounded-lg border"
+                        className="w-full h-auto rounded-lg border"
                       />
                       <Button
                         variant="destructive"
