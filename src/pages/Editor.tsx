@@ -256,7 +256,7 @@ export default function Editor() {
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b bg-card px-4 py-3">
-          <div className="container mx-auto flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
