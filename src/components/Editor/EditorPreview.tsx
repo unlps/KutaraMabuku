@@ -14,7 +14,6 @@ interface EditorPreviewProps {
 }
 
 const PAGE_CONTENT_HEIGHT_PX = 864; // 11in - 2in margins at 96dpi
-const FIRST_PAGE_TITLE_RESERVED_PX = 150;
 const CONTENT_WIDTH = '6.5in';
 
 const createMeasureContainer = () => {
@@ -65,13 +64,12 @@ const paginateChapterByHeight = (rawHtml: string): string[] => {
 
   const pages: string[] = [];
   let current = '';
-  let pageLimit = PAGE_CONTENT_HEIGHT_PX - FIRST_PAGE_TITLE_RESERVED_PX;
+  let pageLimit = PAGE_CONTENT_HEIGHT_PX;
 
   const pushCurrentPage = () => {
     if (current.trim()) {
       pages.push(current);
       current = '';
-      pageLimit = PAGE_CONTENT_HEIGHT_PX;
     }
   };
 
@@ -164,21 +162,6 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
               pageBreakBefore: chapterIndex === 0 && pageIndex === 0 ? 'auto' : 'always',
             }}
           >
-            {pageIndex === 0 && (
-              <h1
-                style={{
-                  textAlign: 'center',
-                  marginBottom: '2em',
-                  fontSize: '24pt',
-                  fontWeight: 'bold',
-                  color: '#1a1a1a',
-                  paddingBottom: '0.5em',
-                }}
-              >
-                {chapter.title}
-              </h1>
-            )}
-
             <div
               className="chapter-content"
               dangerouslySetInnerHTML={{

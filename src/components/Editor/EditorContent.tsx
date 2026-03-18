@@ -2,22 +2,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import { EditorContent as TipTapEditorContent, Editor } from '@tiptap/react';
 import { Loader2, Check, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
 interface EditorContentProps {
   editor: Editor | null;
-  activeChapterTitle: string;
-  onTitleChange: (title: string) => void;
   isSaving: boolean;
 }
 
 const PAGE_WIDTH_PX = 816;
 const PAGE_HEIGHT_PX = 1056;
 const PAGE_PADDING_PX = 96;
-const TITLE_BLOCK_HEIGHT_PX = 88;
-const FIRST_PAGE_CONTENT_TOP_PX = PAGE_PADDING_PX + TITLE_BLOCK_HEIGHT_PX + 24;
-const FIRST_PAGE_CONTENT_HEIGHT_PX = PAGE_HEIGHT_PX - PAGE_PADDING_PX - FIRST_PAGE_CONTENT_TOP_PX;
-const REGULAR_PAGE_CONTENT_HEIGHT_PX = PAGE_HEIGHT_PX - PAGE_PADDING_PX * 2;
+const MIN_CONTENT_HEIGHT_PX = PAGE_HEIGHT_PX - PAGE_PADDING_PX * 2;
 
 const getWordCount = (html: string): number => {
   const div = document.createElement('div');
@@ -32,12 +26,7 @@ const getCharCount = (html: string): number => {
   return (div.textContent || div.innerText || '').length;
 };
 
-const EditorContentComponent: React.FC<EditorContentProps> = ({
-  editor,
-  activeChapterTitle,
-  onTitleChange,
-  isSaving,
-}) => {
+const EditorContentComponent: React.FC<EditorContentProps> = ({ editor, isSaving }) => {
   const [zoom, setZoom] = useState(1);
   const [pageCount, setPageCount] = useState(1);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -65,25 +54,26 @@ const EditorContentComponent: React.FC<EditorContentProps> = ({
     return () => container.removeEventListener('wheel', onWheel);
   }, [zoom]);
 
-  const contentHtml = editor?.getHTML() || '';
-
   useEffect(() => {
-    if (!documentRef.current) return;
+    const root = documentRef.current;
+    if (!root) return;
 
-    const frame = window.requestAnimationFrame(() => {
-      const proseMirror = documentRef.current?.querySelector('.ProseMirror') as HTMLElement | null;
-      if (!proseMirror) return;
+    const proseMirror = root.querySelector('.ProseMirror') as HTMLElement | null;
+    if (!proseMirror) return;
 
-      const contentHeight = proseMirror.scrollHeight;
-      const remainingHeight = Math.max(0, contentHeight - FIRST_PAGE_CONTENT_HEIGHT_PX);
-      const extraPages =
-        remainingHeight > 0 ? Math.ceil(remainingHeight / REGULAR_PAGE_CONTENT_HEIGHT_PX) : 0;
+    const updatePages = () => {
+      const contentHeight = Math.max(MIN_CONTENT_HEIGHT_PX, proseMirror.scrollHeight);
+      const totalHeight = contentHeight + PAGE_PADDING_PX * 2;
+      setPageCount(Math.max(1, Math.ceil(totalHeight / PAGE_HEIGHT_PX)));
+    };
 
-      setPageCount(Math.max(1, 1 + extraPages));
-    });
+    updatePages();
 
-    return () => window.cancelAnimationFrame(frame);
-  }, [contentHtml, activeChapterTitle]);
+    const resizeObserver = new ResizeObserver(() => updatePages());
+    resizeObserver.observe(proseMirror);
+
+    return () => resizeObserver.disconnect();
+  }, [editor]);
 
   if (!editor) {
     return (
@@ -94,6 +84,7 @@ const EditorContentComponent: React.FC<EditorContentProps> = ({
     );
   }
 
+  const contentHtml = editor.getHTML();
   const wordCount = getWordCount(contentHtml);
   const charCount = getCharCount(contentHtml);
   const scaledWidth = PAGE_WIDTH_PX * zoom;
@@ -101,7 +92,7 @@ const EditorContentComponent: React.FC<EditorContentProps> = ({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="sticky top-0 z-20 border-b bg-card/95 px-6 py-2 backdrop-blur-sm">
+      <div className="sticky top-0 z-20 border-b bg-card/95 px-4 py-2 backdrop-blur-sm">
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span>{wordCount} palavras</span>
           <span>•</span>
@@ -156,70 +147,44 @@ const EditorContentComponent: React.FC<EditorContentProps> = ({
         </div>
       </div>
 
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-auto bg-muted/30 p-8"
-      >
-        <div className="pb-8">
+      <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/35 px-6 py-5">
+        <div
+          className="mx-auto"
+          style={{
+            width: `${scaledWidth}px`,
+            minHeight: `${scaledHeight}px`,
+          }}
+        >
           <div
-            className="relative mx-auto"
+            ref={documentRef}
+            className="relative"
             style={{
-              width: `${scaledWidth}px`,
-              height: `${scaledHeight}px`,
+              width: `${PAGE_WIDTH_PX}px`,
+              height: `${PAGE_HEIGHT_PX * pageCount}px`,
+              transform: `scale(${zoom})`,
+              transformOrigin: 'top left',
             }}
           >
+            {Array.from({ length: pageCount }).map((_, index) => (
+              <div
+                key={index}
+                className="absolute left-0 right-0 a4-page editor-page-shell"
+                style={{
+                  top: `${index * PAGE_HEIGHT_PX}px`,
+                }}
+              />
+            ))}
+
             <div
-              ref={documentRef}
-              className="absolute left-0 top-0"
+              className="absolute left-0 top-0 z-10"
               style={{
-                width: `${PAGE_WIDTH_PX}px`,
-                height: `${PAGE_HEIGHT_PX * pageCount}px`,
-                transform: `scale(${zoom})`,
-                transformOrigin: 'top left',
+                width: `${PAGE_WIDTH_PX - PAGE_PADDING_PX * 2}px`,
+                minHeight: `${PAGE_HEIGHT_PX * pageCount - PAGE_PADDING_PX * 2}px`,
+                padding: `${PAGE_PADDING_PX}px ${PAGE_PADDING_PX}px`,
+                boxSizing: 'border-box',
               }}
             >
-              {Array.from({ length: pageCount }).map((_, index) => (
-                <div
-                  key={index}
-                  className="absolute left-0 a4-page bg-background shadow-lg"
-                  style={{
-                    top: `${index * PAGE_HEIGHT_PX}px`,
-                    marginBottom: 0,
-                  }}
-                />
-              ))}
-
-              <div
-                className="absolute left-0 right-0 z-10"
-                style={{
-                  top: `${PAGE_PADDING_PX}px`,
-                  paddingLeft: `${PAGE_PADDING_PX}px`,
-                  paddingRight: `${PAGE_PADDING_PX}px`,
-                }}
-              >
-                <Input
-                  value={activeChapterTitle}
-                  onChange={(event) => onTitleChange(event.target.value)}
-                  className="h-auto border-none bg-transparent p-0 text-4xl font-bold shadow-none focus-visible:ring-0"
-                  placeholder="Titulo do capitulo"
-                />
-              </div>
-
-              <div
-                className="absolute z-10"
-                style={{
-                  top: `${FIRST_PAGE_CONTENT_TOP_PX}px`,
-                  left: `${PAGE_PADDING_PX}px`,
-                  width: `${PAGE_WIDTH_PX - PAGE_PADDING_PX * 2}px`,
-                  minHeight: `${PAGE_HEIGHT_PX * pageCount - FIRST_PAGE_CONTENT_TOP_PX - PAGE_PADDING_PX}px`,
-                  ['--editor-body-height' as string]: `${PAGE_HEIGHT_PX * pageCount - FIRST_PAGE_CONTENT_TOP_PX - PAGE_PADDING_PX}px`,
-                }}
-              >
-                <TipTapEditorContent
-                  editor={editor}
-                  className="page-content editor-paginated-content"
-                />
-              </div>
+              <TipTapEditorContent editor={editor} className="page-content editor-paginated-content" />
             </div>
           </div>
         </div>

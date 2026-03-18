@@ -47,6 +47,95 @@ const VerticalAlignTextStyle = Extension.create({
   },
 });
 
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const getFirstBlockElement = (root: HTMLElement): HTMLElement | null =>
+  Array.from(root.children).find(
+    (child): child is HTMLElement => child instanceof HTMLElement
+  ) || null;
+
+const ensureChapterDocument = (title: string, content: string) => {
+  const trimmedTitle = title.trim() || 'Novo Capitulo';
+  const safeTitle = escapeHtml(trimmedTitle);
+  const normalizedContent = (content || '').trim();
+
+  if (!normalizedContent) {
+    return `<h1 style="text-align: center;">${safeTitle}</h1><p></p>`;
+  }
+
+  if (typeof document === 'undefined') {
+    return normalizedContent.includes('<h1')
+      ? normalizedContent
+      : `<h1 style="text-align: center;">${safeTitle}</h1>${normalizedContent}`;
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(normalizedContent, 'text/html');
+  const firstBlock = getFirstBlockElement(doc.body);
+
+  if (!firstBlock) {
+    return `<h1 style="text-align: center;">${safeTitle}</h1><p></p>`;
+  }
+
+  if (firstBlock.tagName.toLowerCase() === 'h1') {
+    return doc.body.innerHTML;
+  }
+
+  const titleNode = doc.createElement('h1');
+  titleNode.textContent = trimmedTitle;
+  titleNode.style.textAlign = 'center';
+  doc.body.insertBefore(titleNode, firstBlock);
+  return doc.body.innerHTML;
+};
+
+const extractChapterState = (fallbackTitle: string, rawHtml: string) => {
+  const normalizedContent = ensureChapterDocument(fallbackTitle, rawHtml);
+
+  if (typeof document === 'undefined') {
+    return {
+      title: fallbackTitle.trim() || 'Novo Capitulo',
+      content: normalizedContent,
+    };
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(normalizedContent, 'text/html');
+  const firstBlock = getFirstBlockElement(doc.body);
+
+  return {
+    title: firstBlock?.textContent?.trim() || fallbackTitle.trim() || 'Novo Capitulo',
+    content: doc.body.innerHTML,
+  };
+};
+
+const replaceFirstBlockText = (rawHtml: string, nextTitle: string) => {
+  const trimmedTitle = nextTitle.trim() || 'Novo Capitulo';
+  const normalizedContent = ensureChapterDocument(trimmedTitle, rawHtml);
+
+  if (typeof document === 'undefined') {
+    return normalizedContent.replace(
+      /<h1[^>]*>.*?<\/h1>/i,
+      `<h1 style="text-align: center;">${escapeHtml(trimmedTitle)}</h1>`
+    );
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(normalizedContent, 'text/html');
+  const firstBlock = getFirstBlockElement(doc.body);
+
+  if (firstBlock) {
+    firstBlock.textContent = trimmedTitle;
+  }
+
+  return doc.body.innerHTML;
+};
+
 export const useRobustEditor = (ebookId: string) => {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
@@ -82,8 +171,7 @@ export const useRobustEditor = (ebookId: string) => {
     ],
     editorProps: {
       attributes: {
-        class:
-          'prose prose-sm sm:prose-base lg:prose-lg max-w-none focus:outline-none min-h-[600px] px-8 py-6',
+        class: 'prose prose-sm sm:prose-base lg:prose-lg max-w-none focus:outline-none',
       },
     },
     onUpdate: ({ editor }) => {
@@ -109,7 +197,7 @@ export const useRobustEditor = (ebookId: string) => {
         id: ch.id,
         ebook_id: ch.ebook_id,
         title: ch.title,
-        content: ch.content || '',
+        content: ensureChapterDocument(ch.title, ch.content || ''),
         chapter_order: ch.chapter_order,
         created_at: ch.created_at,
         updated_at: ch.updated_at,
@@ -160,9 +248,23 @@ export const useRobustEditor = (ebookId: string) => {
     (newContent: string) => {
       if (!activeChapterId) return;
 
+      const currentChapter = chapters.find((ch) => ch.id === activeChapterId);
+      const nextChapterState = extractChapterState(
+        currentChapter?.title || 'Novo Capitulo',
+        newContent
+      );
+
       // Update local state immediately
       setChapters((prev) =>
-        prev.map((ch) => (ch.id === activeChapterId ? { ...ch, content: newContent } : ch))
+        prev.map((ch) =>
+          ch.id === activeChapterId
+            ? {
+                ...ch,
+                title: nextChapterState.title,
+                content: nextChapterState.content,
+              }
+            : ch
+        )
       );
 
       // Debounce save
@@ -171,21 +273,22 @@ export const useRobustEditor = (ebookId: string) => {
       saveTimeoutRef.current = setTimeout(async () => {
         setIsSaving(true);
         try {
-          const currentChapter = chapters.find((c) => c.id === activeChapterId);
-          if (currentChapter) {
-            const result = chapterSchema.safeParse({
-              title: currentChapter.title,
-              content: newContent,
-            });
+          const result = chapterSchema.safeParse({
+            title: nextChapterState.title,
+            content: nextChapterState.content,
+          });
 
-            if (result.success) {
-              const { error } = await supabase
-                .from('chapters')
-                .update({ content: newContent, updated_at: new Date().toISOString() })
-                .eq('id', activeChapterId);
+          if (result.success) {
+            const { error } = await supabase
+              .from('chapters')
+              .update({
+                title: nextChapterState.title,
+                content: nextChapterState.content,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', activeChapterId);
 
-              if (error) throw error;
-            }
+            if (error) throw error;
           }
         } catch (error) {
           console.error('Auto-save failed:', error);
@@ -207,14 +310,34 @@ export const useRobustEditor = (ebookId: string) => {
     async (title: string) => {
       if (!activeChapterId) return;
 
+      const trimmedTitle = title.trim();
+      if (!trimmedTitle) return;
+
+      const currentChapter = chapters.find((ch) => ch.id === activeChapterId);
+      if (!currentChapter) return;
+
+      const nextContent = replaceFirstBlockText(currentChapter.content, trimmedTitle);
+
       setChapters((prev) =>
-        prev.map((ch) => (ch.id === activeChapterId ? { ...ch, title } : ch))
+        prev.map((ch) =>
+          ch.id === activeChapterId
+            ? { ...ch, title: trimmedTitle, content: nextContent }
+            : ch
+        )
       );
+
+      if (editor) {
+        editor.commands.setContent(nextContent, false);
+      }
 
       try {
         const { error } = await supabase
           .from('chapters')
-          .update({ title, updated_at: new Date().toISOString() })
+          .update({
+            title: trimmedTitle,
+            content: nextContent,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', activeChapterId);
 
         if (error) throw error;
@@ -225,7 +348,7 @@ export const useRobustEditor = (ebookId: string) => {
         });
       }
     },
-    [activeChapterId, toast]
+    [activeChapterId, chapters, editor, toast]
   );
 
   // Update chapter title by id (used by sidebar inline rename)
@@ -234,12 +357,27 @@ export const useRobustEditor = (ebookId: string) => {
       const trimmed = title.trim();
       if (!trimmed) return;
 
-      setChapters((prev) => prev.map((ch) => (ch.id === id ? { ...ch, title: trimmed } : ch)));
+      const currentChapter = chapters.find((ch) => ch.id === id);
+      if (!currentChapter) return;
+
+      const nextContent = replaceFirstBlockText(currentChapter.content, trimmed);
+
+      setChapters((prev) =>
+        prev.map((ch) => (ch.id === id ? { ...ch, title: trimmed, content: nextContent } : ch))
+      );
+
+      if (editor && activeChapterId === id) {
+        editor.commands.setContent(nextContent, false);
+      }
 
       try {
         const { error } = await supabase
           .from('chapters')
-          .update({ title: trimmed, updated_at: new Date().toISOString() })
+          .update({
+            title: trimmed,
+            content: nextContent,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', id);
 
         if (error) throw error;
@@ -250,7 +388,7 @@ export const useRobustEditor = (ebookId: string) => {
         });
       }
     },
-    [toast]
+    [activeChapterId, chapters, editor, toast]
   );
 
   // Add new chapter
@@ -262,7 +400,7 @@ export const useRobustEditor = (ebookId: string) => {
         .insert({
           ebook_id: ebookId,
           title: `Capítulo ${newOrder + 1}`,
-          content: '<p>Algum texto</p>',
+          content: `<h1 style="text-align: center;">Capítulo ${newOrder + 1}</h1><p>Algum texto</p>`,
           chapter_order: newOrder,
         })
         .select()
@@ -274,7 +412,7 @@ export const useRobustEditor = (ebookId: string) => {
         id: data.id,
         ebook_id: data.ebook_id,
         title: data.title,
-        content: data.content || '',
+        content: ensureChapterDocument(data.title, data.content || ''),
         chapter_order: data.chapter_order,
         created_at: data.created_at,
         updated_at: data.updated_at,

@@ -30,9 +30,10 @@ export const useEditorExport = ({
       .sort((a, b) => a.chapter_order - b.chapter_order)
       .map((chapter, index) => {
         const chapterBreak = index > 0 ? '<div data-page-break="chapter"></div>' : '';
-        const chapterTitle = `<h1 style="text-align: center; margin-top: 2em;">${chapter.title}</h1>`;
-        const content = chapter.content || '';
-        return `${chapterBreak}\n${chapterTitle}\n${content}`;
+        const content =
+          (chapter.content || '').trim() ||
+          `<h1 style="text-align: center;">${chapter.title}</h1><p>Capitulo vazio</p>`;
+        return `${chapterBreak}\n${content}`;
       })
       .join('\n\n');
   }, [chapters]);
