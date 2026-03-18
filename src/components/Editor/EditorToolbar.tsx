@@ -1,4 +1,4 @@
-﻿import React from 'react';
+﻿import React, { useRef } from 'react';
 import { Editor } from '@tiptap/react';
 import {
   Bold,
@@ -17,6 +17,8 @@ import {
   Eraser,
   ArrowRight,
   ArrowLeft,
+  Link as LinkIcon,
+  ImagePlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -55,6 +57,8 @@ const ToolbarButton = ({
 const EditorToolbar: React.FC<ToolbarProps> = ({ editor }) => {
   if (!editor) return null;
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const textStyleAttrs = editor.getAttributes('textStyle') as {
     fontFamily?: string;
     fontSize?: string;
@@ -92,8 +96,37 @@ const EditorToolbar: React.FC<ToolbarProps> = ({ editor }) => {
     editor.chain().focus().setMark('textStyle', { verticalAlign: active ? null : 'sub' }).run();
   };
 
+  const setLink = () => {
+    const previousUrl = editor.getAttributes('link').href;
+    const url = window.prompt('URL do link', previousUrl || 'https://');
+
+    if (url === null) return;
+    if (!url.trim()) {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run();
+  };
+
+  const addImageByUrl = () => {
+    const url = window.prompt('URL da imagem', 'https://');
+    if (!url || !url.trim()) return;
+    editor.chain().focus().setImage({ src: url.trim() }).run();
+  };
+
+  const addImageFromComputer = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = String(reader.result || '');
+      if (!src) return;
+      editor.chain().focus().setImage({ src }).run();
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
-    <div className="border-b bg-card px-2 py-1.5">
+    <div className="border-b bg-card px-2 py-1.5 sticky top-0 z-30">
       <div className="flex flex-wrap items-stretch gap-2">
         <div className="bg-transparent min-w-[420px] h-[66px] flex flex-col justify-between">
           <div className="px-1 pt-1 flex flex-wrap items-center gap-1.5">
@@ -154,7 +187,7 @@ const EditorToolbar: React.FC<ToolbarProps> = ({ editor }) => {
 
         <div className="self-stretch w-px bg-border/70 mx-0.5" />
 
-        <div className="bg-transparent min-w-[340px] h-[66px] flex flex-col justify-between">
+        <div className="bg-transparent min-w-[380px] h-[66px] flex flex-col justify-between">
           <div className="px-1 pt-1 flex flex-wrap items-center gap-1">
             <ToolbarButton onClick={() => editor.chain().focus().setParagraph().run()} isActive={editor.isActive('paragraph')} title="Paragrafo"><Pilcrow className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive('bulletList')} title="Bullets"><List className="h-4 w-4" /></ToolbarButton>
@@ -168,6 +201,24 @@ const EditorToolbar: React.FC<ToolbarProps> = ({ editor }) => {
             <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('center').run()} isActive={editor.isActive({ textAlign: 'center' })} title="Centralizar"><AlignCenter className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('right').run()} isActive={editor.isActive({ textAlign: 'right' })} title="Alinhar direita"><AlignRight className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('justify').run()} isActive={editor.isActive({ textAlign: 'justify' })} title="Justificar"><AlignJustify className="h-4 w-4" /></ToolbarButton>
+
+            <Separator orientation="vertical" className="h-6" />
+
+            <ToolbarButton onClick={setLink} isActive={editor.isActive('link')} title="Adicionar link"><LinkIcon className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton onClick={() => fileInputRef.current?.click()} title="Adicionar imagem do computador"><ImagePlus className="h-4 w-4" /></ToolbarButton>
+            <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={addImageByUrl} title="Adicionar imagem por URL">Img URL</Button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) addImageFromComputer(file);
+                e.currentTarget.value = '';
+              }}
+            />
           </div>
           <div className="px-1 pb-0.5">
             <p className="text-[10px] text-muted-foreground text-center leading-none">Paragrafo</p>

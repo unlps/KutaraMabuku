@@ -4,6 +4,7 @@ import { Extension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
 import TextAlign from '@tiptap/extension-text-align';
 import {
   TextStyle,
@@ -69,6 +70,10 @@ export const useRobustEditor = (ebookId: string) => {
       VerticalAlignTextStyle,
       Link.configure({
         openOnClick: false,
+      }),
+      Image.configure({
+        inline: false,
+        allowBase64: true,
       }),
       TextAlign.configure({
         types: ['heading', 'paragraph'],
@@ -257,7 +262,7 @@ export const useRobustEditor = (ebookId: string) => {
         .insert({
           ebook_id: ebookId,
           title: `Capítulo ${newOrder + 1}`,
-          content: '',
+          content: '<p>Algum texto</p>',
           chapter_order: newOrder,
         })
         .select()
