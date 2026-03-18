@@ -2,11 +2,14 @@
 -- ValidaMabuku: Reviewer Dashboard Schema
 -- =============================================================================
 
+-- Enable pgcrypto for gen_random_bytes()
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 -- 1. Reviewer Invitations (admin invites reviewers via token)
 CREATE TABLE IF NOT EXISTS public.reviewer_invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT NOT NULL,
-  token TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+  token TEXT UNIQUE NOT NULL DEFAULT encode(extensions.gen_random_bytes(32), 'hex'),
   invited_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'expired')),
   expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '7 days'),
@@ -17,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.reviewer_invitations (
 CREATE TABLE IF NOT EXISTS public.reviewer_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
-  editor_secret_id TEXT UNIQUE NOT NULL DEFAULT ('VM-' || upper(substr(encode(gen_random_bytes(6), 'hex'), 1, 12))),
+  editor_secret_id TEXT UNIQUE NOT NULL DEFAULT ('VM-' || upper(substr(encode(extensions.gen_random_bytes(6), 'hex'), 1, 12))),
   publisher_name TEXT,
   phone TEXT,
   secondary_contact TEXT,
